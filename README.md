@@ -17,7 +17,7 @@ packages/
   api/       HTTP transport to the backend, plus the passwordless auth client.
   i18n/      German and English catalogs and locale-aware formatting.
 apps/
-  app/       Commands and selectors — the layer screens bind to.
+  app/       Commands and selectors, the screens bound to them, and the Expo shell.
 e2e/         The SPEC's acceptance scenarios as a multi-device simulation.
 ```
 
@@ -33,9 +33,13 @@ pnpm install
 pnpm check-types   # tsc, hard zero
 pnpm lint          # eslint, hard zero
 pnpm test          # vitest
+pnpm --filter @fam/app export:web    # bundles the app
 ```
 
-All three gates are expected to be clean at every commit; CI runs the same three.
+All gates are expected to be clean at every commit. CI splits them: the `core`
+job covers everything that does not need the design system and gates the branch;
+the `app` job needs `@cp/ui` from the registry and is non-blocking until those
+packages are published (`docs/operations.md`).
 
 ## How the architecture holds together
 
@@ -82,15 +86,20 @@ stayed offline throughout catches up correctly.
 Stated plainly, because a half-built thing described as finished is worse than one
 described accurately:
 
-- **Rendered screens.** The app's behaviour lives in `apps/app` (commands and
-  selectors, tested); the React Native screens that bind to it are not written. The
-  component library they will use is `@cp/ui` from the design-system repository.
-- **The backend module.** The family module for the Laravel platform is developed
-  in `backend-php-01`; see that repository. `packages/sync/src/reference-server.ts`
-  is the executable specification it implements, and the app can run against either.
-- **Store submission.** The release checklists in PLAN.md §6 (Play closed testing,
-  the DSA trader declaration, developer verification) are organizational steps
-  outside this repository.
+- **Most of the screens.** Five exist — today, shopping, week plan, protocol and
+  conflict resolution — and `pnpm --filter @fam/app export:web` bundles the whole
+  chain. They are not render-tested, there is no join flow yet, and the shell still
+  opens an in-memory store instead of the platform SQLite driver.
+- **A running backend.** The family module for the Laravel platform lives in
+  `backend-php-01` and has never been executed: this environment cannot fetch
+  Composer packages. `packages/sync/src/reference-server.ts` is the executable
+  specification it implements, so the contract is pinned even though the
+  implementation is not yet exercised.
+- **External calendar sync and the AI provider.** Both are backend work by design
+  (SPEC FR-207, AI-01). The conflict semantics a connector must respect are
+  already tested here.
+- **Store submission and the compliance paperwork.** Organizational steps —
+  see `docs/operations.md`.
 
 See `docs/status.md` for the work-package-by-work-package position, and
 `docs/operations.md` for the steps that have to happen outside a repository
