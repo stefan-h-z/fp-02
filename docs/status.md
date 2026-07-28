@@ -7,7 +7,12 @@ Legend: **done** — implemented and covered by tests that run in CI ·
 **open** — not started · **external** — cannot be completed from a code
 repository (store submission, live provider accounts).
 
-401 tests across 19 files; `pnpm check-types` and `pnpm lint` are hard-zero.
+422 tests across 20 files; `pnpm check-types` and `pnpm lint` are hard-zero.
+
+The sync core has been through an adversarial review that reproduced sixteen
+defects with failing tests — three of them losing data — all since fixed and
+pinned by regressions in `packages/sync/test/robustness.test.ts`. Replica
+convergence itself survived the attack: the property tests' central claim held.
 
 ## Phase 0 — Foundation
 
