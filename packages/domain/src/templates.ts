@@ -264,9 +264,11 @@ export interface ChildTaskTemplate {
  * `readTask` derives it from the owner's role (FR-312), so a template that also
  * wrote the flag would be a second source of truth that could disagree.
  *
- * Stars stop at twelve: FR-323 puts them on children's tasks, and a fourteen-year
- * -old collecting stars for doing their own laundry is the kind of infantilising
- * the SPEC's non-goals rule out.
+ * The entries that first appear at thirteen carry no stars. FR-323 puts stars on
+ * children's tasks, and offering a teenager one for doing their own laundry is
+ * the kind of infantilising the SPEC's non-goals rule out. The jobs a nine-year
+ * -old keeps doing at fifteen keep their star, because the star belongs to the
+ * suggestion and the parent is free to take it off the task.
  */
 export const CHILD_TASK_SUGGESTIONS: readonly ChildTaskTemplate[] = [
   { kind: "child-task", key: "tidy-toys", title: "Put the toys away", minAge: 3, maxAge: 5, rewardStars: 1 },
