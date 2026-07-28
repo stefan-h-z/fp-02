@@ -82,7 +82,7 @@ export class HttpSyncTransport implements SyncTransport {
         },
         body: JSON.stringify(body),
       });
-    } catch (cause) {
+    } catch {
       // Being offline is the normal case, not an error worth decorating.
       throw new SyncHttpError(0, path, "network unavailable");
     }

@@ -27,11 +27,32 @@ importers:
         specifier: ^3.0.0
         version: 3.2.7(@types/node@22.20.1)
 
+  apps/app:
+    dependencies:
+      '@fam/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@fam/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@fam/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
+      '@fam/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@fam/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
+
   packages/api:
     dependencies:
       '@fam/domain':
         specifier: workspace:*
         version: link:../domain
+      '@fam/sync':
+        specifier: workspace:*
+        version: link:../sync
 
   packages/config: {}
 

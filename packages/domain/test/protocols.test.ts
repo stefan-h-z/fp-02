@@ -110,7 +110,7 @@ describe("schedule derivation", () => {
 
 describe("every-n-hours counts from the actual dose (FR-922)", () => {
   it("moves the next dose when one was given late", () => {
-    const protocol = seedProtocol({
+    seedProtocol({
       frequencyKind: "every-n-hours",
       frequencyValue: 8,
       startsAt: START + 8 * HOUR_MS,
@@ -128,7 +128,7 @@ describe("every-n-hours counts from the actual dose (FR-922)", () => {
   });
 
   it("keeps the grid fixed when the protocol says so (FR-920)", () => {
-    const protocol = seedProtocol({
+    seedProtocol({
       frequencyKind: "every-n-hours",
       frequencyValue: 8,
       startsAt: START + 8 * HOUR_MS,
@@ -141,7 +141,7 @@ describe("every-n-hours counts from the actual dose (FR-922)", () => {
     const instances = planInstances(readProtocol(state, "proto-1")!, state, { from: START, to: START + 2 * DAY });
 
     expect(instances[1]?.dueAt).toBe(firstDue + 8 * HOUR_MS);
-    expect(protocol.missedDoseRule).toBe("fixed");
+    expect(readProtocol(state, "proto-1")?.missedDoseRule).toBe("fixed");
   });
 });
 

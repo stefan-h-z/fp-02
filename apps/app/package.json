@@ -1,0 +1,14 @@
+{
+  "name": "@fam/app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "dependencies": {
+    "@fam/api": "workspace:*",
+    "@fam/domain": "workspace:*",
+    "@fam/i18n": "workspace:*",
+    "@fam/storage": "workspace:*",
+    "@fam/sync": "workspace:*"
+  }
+}
