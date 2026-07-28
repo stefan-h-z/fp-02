@@ -29,6 +29,8 @@ const POLICY_VERSION = "1.0";
 
 export interface SettingsScreenProps {
   readonly personId: string;
+  /** Opens the legal texts. Injected so the screen stays routing-agnostic. */
+  readonly onOpenLegal?: () => void;
 }
 
 export function SettingsScreen(props: SettingsScreenProps): ReactNode {
@@ -212,6 +214,17 @@ export function SettingsScreen(props: SettingsScreenProps): ReactNode {
 
       {/* FR-1405: where AI-assisted processing happens, said plainly. */}
       <Alert variant="info" label={t.t("privacy.title")} hint={t.t("privacy.aiNotice")} />
+
+      {/* FR-1401, FR-1402: the policy and the provider are one tap away from
+          the screen where a person exercises their rights, not on a website. */}
+      {props.onOpenLegal === undefined ? null : (
+        <Button
+          label={t.t("legal.title")}
+          variant="ghost"
+          onPress={props.onOpenLegal}
+          testID="privacy-open-legal"
+        />
+      )}
     </>
   );
 }

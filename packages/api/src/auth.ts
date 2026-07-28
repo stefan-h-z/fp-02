@@ -230,13 +230,25 @@ export class AuthClient {
     await this.post("/api/v1/family/recovery/magic-link", { email });
   }
 
-  async listDevices(token: string): Promise<readonly { readonly id: string; readonly name: string; readonly lastSeenAt: string }[]> {
-    return this.post("/api/v1/family/devices/list", {}, token);
+  async listDevices(
+    token: string,
+  ): Promise<readonly { readonly id: string; readonly name: string; readonly lastSeenAt: string }[]> {
+    const body = await this.send<{
+      readonly data: readonly { readonly id: string; readonly name: string; readonly lastSeenAt: string }[];
+    }>("GET", "/api/v1/family/devices", undefined, token);
+    return body.data;
   }
 
   /** Remote sign-out of a lost device (FR-122, SEC-01). */
+  /**
+   * Remote sign-out of a lost device (FR-122, FR-1420, SEC-01).
+   *
+   * `DELETE /devices/{id}`, which is what the backend offers. The client used
+   * to POST to `/devices/revoke`, an endpoint that has never existed — so the
+   * one control a person reaches for when their phone is gone answered 404.
+   */
   async revokeDevice(token: string, deviceId: string): Promise<void> {
-    await this.post("/api/v1/family/devices/revoke", { deviceId }, token);
+    await this.send("DELETE", "/api/v1/family/devices/" + encodeURIComponent(deviceId), undefined, token);
   }
 
   async createGuestLink(token: string, request: GuestLinkRequest): Promise<GuestLink> {
@@ -253,17 +265,27 @@ export class AuthClient {
    * which needs a platform access token and passes `platform: true`, because
    * that endpoint is guarded by the platform rather than by this module.
    */
-  private async post<T>(
+  private post<T>(
     path: string,
     body: unknown,
     token?: string,
     options?: { readonly platform?: boolean },
   ): Promise<T> {
+    return this.send<T>("POST", path, body, token, options);
+  }
+
+  private async send<T>(
+    method: "GET" | "POST" | "DELETE",
+    path: string,
+    body?: unknown,
+    token?: string,
+    options?: { readonly platform?: boolean },
+  ): Promise<T> {
     const response = await this.fetchImpl(this.baseUrl + path, {
-      method: "POST",
+      method,
       headers: {
-        "content-type": "application/json",
         accept: "application/json",
+        ...(body === undefined ? {} : { "content-type": "application/json" }),
         // Sent on every request, not only the unauthenticated ones. A device
         // token is this module's own credential rather than a platform access
         // token, so the platform cannot derive the app from it and falls back
@@ -275,12 +297,15 @@ export class AuthClient {
             ? { authorization: "Bearer " + token }
             : { "x-family-device-token": token }),
       },
-      body: JSON.stringify(body),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
 
     if (!response.ok) {
-      throw new Error("auth request failed: " + path + " (" + response.status + ")");
+      throw new Error("auth request failed: " + path + " (" + String(response.status) + ")");
     }
+
+    // A 204 carries no body; revoking a device is the case that matters.
+    if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
   }
 }

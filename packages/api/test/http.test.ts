@@ -208,3 +208,79 @@ describe("the global fetch is bound, not merely referenced", () => {
     }
   });
 });
+
+/**
+ * The device endpoints, against the paths the backend actually declares.
+ *
+ * Remote sign-out is the one control a person reaches for when their phone is
+ * gone (FR-122, FR-1420, SEC-01), and it was pointed at `/devices/revoke` — an
+ * endpoint that has never existed. Nothing caught it, because the server was
+ * never on the other end of a test.
+ */
+describe("device management speaks the backend's routes", () => {
+  function spy(status = 204, body?: unknown) {
+    const calls: { method: string; url: string; headers: Record<string, string> }[] = [];
+    const fetchImpl = (async (url: unknown, init?: RequestInit) => {
+      calls.push({
+        method: init?.method ?? "GET",
+        url: String(url),
+        headers: Object.fromEntries(
+          Object.entries((init?.headers ?? {}) as Record<string, string>).map(([k, v]) => [
+            k.toLowerCase(),
+            v,
+          ]),
+        ),
+      });
+      return body === undefined
+        ? new Response(null, { status })
+        : new Response(JSON.stringify(body), {
+            status,
+            headers: { "content-type": "application/json" },
+          });
+    }) as unknown as typeof fetch;
+    return { calls, fetchImpl };
+  }
+
+  it("revokes a device with DELETE on its own path", async () => {
+    const { calls, fetchImpl } = spy();
+    const auth = new AuthClient({ baseUrl: "https://api.test", clientId: "c", fetchImpl });
+
+    await auth.revokeDevice("device-token", "dev-42");
+
+    expect(calls[0]?.method).toBe("DELETE");
+    expect(calls[0]?.url).toBe("https://api.test/api/v1/family/devices/dev-42");
+    expect(calls[0]?.headers["x-family-device-token"]).toBe("device-token");
+  });
+
+  /** A 204 has no body; parsing one as JSON would throw on success. */
+  it("tolerates the empty response a deletion returns", async () => {
+    const { fetchImpl } = spy(204);
+    const auth = new AuthClient({ baseUrl: "https://api.test", fetchImpl });
+
+    await expect(auth.revokeDevice("t", "dev-1")).resolves.toBeUndefined();
+  });
+
+  it("lists devices with GET and unwraps the envelope", async () => {
+    const { calls, fetchImpl } = spy(200, {
+      data: [{ id: "dev-1", name: "Mum's phone", lastSeenAt: "2026-07-28T09:00:00Z" }],
+    });
+    const auth = new AuthClient({ baseUrl: "https://api.test", fetchImpl });
+
+    const devices = await auth.listDevices("device-token");
+
+    expect(calls[0]?.method).toBe("GET");
+    expect(calls[0]?.url).toBe("https://api.test/api/v1/family/devices");
+    expect(devices).toHaveLength(1);
+    expect(devices[0]?.name).toBe("Mum's phone");
+  });
+
+  /** An id with a slash in it must not walk off into another route. */
+  it("escapes the device id", async () => {
+    const { calls, fetchImpl } = spy();
+    const auth = new AuthClient({ baseUrl: "https://api.test", fetchImpl });
+
+    await auth.revokeDevice("t", "a/b");
+
+    expect(calls[0]?.url).toBe("https://api.test/api/v1/family/devices/a%2Fb");
+  });
+});

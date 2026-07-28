@@ -20,6 +20,12 @@ export interface JoinScreenProps {
   readonly onJoined: (session: DeviceSession, recoveryCode?: string) => void;
   /** Prefilled when the app was opened from an invitation link. */
   readonly inviteToken?: string;
+  /**
+   * Opens the legal texts. Offered here on purpose: a person deciding whether
+   * to hand their family's life to an app must be able to read what happens to
+   * it *before* joining, not afterwards from a settings screen.
+   */
+  readonly onOpenLegal?: () => void;
 }
 
 type Mode = "choose" | "join" | "create" | "recover";
@@ -89,6 +95,9 @@ export function JoinScreen(props: JoinScreenProps): ReactNode {
       <Button label={t.t("join.haveLink")} variant="primary" onPress={() => setMode("join")} testID="join-invite" />
       <Button label={t.t("join.createFamily")} variant="outline" onPress={() => setMode("create")} testID="join-create" />
       <Button label={t.t("join.lostDevice")} variant="ghost" onPress={() => setMode("recover")} testID="join-recover" />
+      {props.onOpenLegal === undefined ? null : (
+        <Button label={t.t("legal.open")} variant="ghost" onPress={props.onOpenLegal} testID="join-legal" />
+      )}
     </>
   );
 }

@@ -171,6 +171,14 @@ export const en = {
   "common.today": "today",
   "common.yesterday": "yesterday",
   "common.tomorrow": "tomorrow",
+
+  "legal.title": "Legal",
+  "legal.privacy": "Privacy",
+  "legal.provider": "Provider",
+  "legal.flows": "Where data goes",
+  "legal.version": "Version {version}, effective {date}",
+  "legal.incomplete": "This document is not finished yet",
+  "legal.open": "Privacy, provider and data flows",
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -332,6 +340,14 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "common.today": "heute",
   "common.yesterday": "gestern",
   "common.tomorrow": "morgen",
+
+  "legal.title": "Rechtliches",
+  "legal.privacy": "Datenschutz",
+  "legal.provider": "Anbieter",
+  "legal.flows": "Wohin Daten fließen",
+  "legal.version": "Fassung {version}, gültig ab {date}",
+  "legal.incomplete": "Dieses Dokument ist noch nicht vollständig",
+  "legal.open": "Datenschutz, Anbieter und Datenflüsse",
 };
 
 const CATALOGS: Readonly<Record<Locale, Readonly<Record<MessageKey, string>>>> = { en, de };

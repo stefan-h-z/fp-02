@@ -5,6 +5,7 @@
 import type { ReactNode } from "react";
 import { SettingsScreen } from "../src/screens/SettingsScreen.js";
 import { useRuntime, useTranslator } from "../src/runtime.js";
+import { router } from "expo-router";
 import { EmptyState } from "@cp/ui";
 
 export default function SettingsRoute(): ReactNode {
@@ -14,5 +15,5 @@ export default function SettingsRoute(): ReactNode {
   if (actorId === null) {
     return <EmptyState label={t.t("privacy.title")} leadingIcon="help-circle" hint={t.t("onboarding.who")} />;
   }
-  return <SettingsScreen personId={actorId} />;
+  return <SettingsScreen personId={actorId} onOpenLegal={() => router.push("/legal")} />;
 }

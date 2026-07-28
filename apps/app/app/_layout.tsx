@@ -13,7 +13,7 @@ import { useCallback, useEffect, useState, type ComponentProps, type ReactNode }
 import { Slot } from "expo-router";
 import { TamaguiProvider, Theme } from "@tamagui/core";
 import { tamaguiConfig } from "@cp/tokens";
-import { Alert, Spinner } from "@cp/ui";
+import { Alert, Button, Spinner } from "@cp/ui";
 import { SyncClient } from "@fam/sync";
 import type { StateStore } from "@fam/storage";
 import { AuthClient, HttpSyncTransport, type DeviceSession } from "@fam/api";
@@ -22,6 +22,7 @@ import { registerAppIcons } from "../src/icons.js";
 import { openLocalStore } from "../src/storage.js";
 import { hasSession, loadSession, saveSession } from "../src/session.js";
 import { JoinScreen } from "../src/screens/JoinScreen.js";
+import { LegalScreen } from "../src/screens/LegalScreen.js";
 
 type TamaguiProviderConfig = NonNullable<ComponentProps<typeof TamaguiProvider>["config"]>;
 
@@ -53,6 +54,11 @@ export default function RootLayout(): ReactNode {
   const [ready, setReady] = useState<Ready | undefined>(undefined);
   const [actorId, setActorId] = useState<string | null>(null);
   const [recoveryCode, setRecoveryCode] = useState<string | undefined>(undefined);
+  // Shown over the join screen rather than pushed as a route: before a family
+  // is joined the shell renders `JoinScreen` in place of `<Slot/>`, so there is
+  // no navigator mounted and `router.push` throws. The legal texts have to be
+  // reachable at exactly that moment (FR-1401), so the shell swaps them in.
+  const [showLegal, setShowLegal] = useState(false);
   const [auth] = useState(
     () =>
       new AuthClient({
@@ -133,7 +139,23 @@ export default function RootLayout(): ReactNode {
           <Spinner />
         ) : ready.client === undefined ? (
           <AppProvider client={unjoinedClient(ready.store)} actorId={null} setActorId={setActorId}>
-            <JoinScreen auth={auth} onJoined={(session, code) => void onJoined(session, code)} />
+            {showLegal ? (
+              <>
+                <LegalScreen />
+                <Button
+                  label="←"
+                  variant="ghost"
+                  onPress={() => setShowLegal(false)}
+                  testID="legal-back"
+                />
+              </>
+            ) : (
+              <JoinScreen
+                auth={auth}
+                onJoined={(session, code) => void onJoined(session, code)}
+                onOpenLegal={() => setShowLegal(true)}
+              />
+            )}
           </AppProvider>
         ) : (
           <AppProvider client={ready.client} actorId={actorId} setActorId={setActorId}>

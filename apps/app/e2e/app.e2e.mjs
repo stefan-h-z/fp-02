@@ -93,6 +93,33 @@ await step("the app boots and offers the three ways in", async () => {
   await page.getByTestId("join-recover").waitFor();
 });
 
+/**
+ * FR-1401, FR-1402, FR-1404 — and the reason this runs *before* joining: a
+ * person deciding whether to hand their family's life to an app has to be able
+ * to read what happens to it first, with no account and nothing entered.
+ */
+await step("the legal texts are readable before joining anything", async () => {
+  await page.getByTestId("join-legal").click();
+  await page.getByTestId("legal-tabs").waitFor({ timeout: 30_000 });
+
+  const privacy = await page.locator("body").innerText();
+  assert(/Datenschutz|Privacy/.test(privacy), "no privacy policy on the legal screen");
+  assert(/Fassung|Version/.test(privacy), "the policy carries no version");
+
+  // The operator has not filled the placeholders in, and the screen says so
+  // rather than presenting an unfinished document as final.
+  await page.getByTestId("legal-privacy-incomplete").waitFor({ timeout: 10_000 });
+
+  await page.getByTestId("legal-tab-flows").click();
+  const flows = await page.locator("body").innerText();
+  assert(/backend/i.test(flows), "the data-flow disclosure is empty");
+
+  // Back is a control on the screen, not browser history: before joining, the
+  // shell renders this in place of the navigator, so there is no history entry.
+  await page.getByTestId("legal-back").click();
+  await page.getByTestId("join-invite").waitFor({ timeout: 30_000 });
+});
+
 await step("an invitation can be redeemed against the real backend", async () => {
   await page.getByTestId("join-invite").click();
 
