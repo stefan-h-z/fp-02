@@ -17,6 +17,7 @@ import { SyncClient } from "@fam/sync";
 import { MemoryStateStore } from "@fam/storage";
 import { HttpSyncTransport } from "@fam/api";
 import { AppProvider } from "../src/runtime.js";
+import { registerAppIcons } from "../src/icons.js";
 
 type TamaguiProviderConfig = NonNullable<ComponentProps<typeof TamaguiProvider>["config"]>;
 
@@ -26,6 +27,10 @@ type TamaguiProviderConfig = NonNullable<ComponentProps<typeof TamaguiProvider>[
  * and the address is known.
  */
 const API_BASE_URL = process.env["EXPO_PUBLIC_API_URL"] ?? "http://localhost:8000";
+
+// Glyphs must be registered before anything renders, or the first paint shows
+// placeholders (see src/icons.ts).
+registerAppIcons();
 
 export default function RootLayout(): ReactNode {
   const [client, setClient] = useState<SyncClient | undefined>(undefined);

@@ -99,6 +99,9 @@ display awake in cook mode. Both are named TODOs rather than stubs.
 repository, which installs locally but not in CI — hence the split CI, whose
 `app` job is non-blocking until the packages are published.
 
-**A few icons are missing** from the design system (`toothbrush`, `backpack`,
-`pill`, `utensils`), so those render the placeholder glyph. They belong in
-`cp-testt1-09`, added the way that repository adds components.
+**Two routine glyphs are stand-ins.** The app registers the icons it needs
+through the design system's own `registerIcons` extension point
+(`apps/app/src/icons.ts`), so nothing renders a placeholder — but lucide has no
+toothbrush or hairbrush, and a routine icon a four-year-old cannot recognise is
+worse than a generic one. Those two need real artwork before the kids' view
+ships (FR-1206).

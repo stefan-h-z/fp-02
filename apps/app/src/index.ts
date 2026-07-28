@@ -1,6 +1,7 @@
 export * from "./commands.js";
 export * from "./selectors.js";
 export * from "./runtime.js";
+export * from "./icons.js";
 export * from "./screens/TodayScreen.js";
 export * from "./screens/MyDayScreen.js";
 export * from "./screens/ShoppingScreen.js";

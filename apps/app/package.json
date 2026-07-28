@@ -31,7 +31,9 @@
     "react-native-helmet-async": "2.0.4",
     "@react-navigation/bottom-tabs": "^7.0.0",
     "react-native-gesture-handler": "~2.20.2",
-    "react-native-reanimated": "~3.16.1"
+    "react-native-reanimated": "~3.16.1",
+    "lucide-react-native": "^0.469.0",
+    "react-native-svg": "15.8.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.0"
