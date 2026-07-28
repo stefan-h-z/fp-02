@@ -12,7 +12,7 @@ statement about the product.
 
 Legend: **done** — implemented and covered by tests that run in CI ·
 **partial** — the logic exists and is tested, a named part is missing ·
-**backend** — implemented in `backend-php-01`, not executable here (see below) ·
+**backend** — implemented in `backend-php-01`, whose own suite now runs here ·
 **platform** — needs a native capability or a store/provider account.
 
 `pnpm check-types` and `pnpm lint` are hard-zero; `expo export --platform web`
@@ -128,19 +128,33 @@ server:
 the joiner is shown the name and role the inviter chose. It is now implemented,
 and reading an invitation deliberately does not spend it.
 
-**The old note said the backend had never run.** `composer install` cannot fetch package archives
-in this environment, so every PHP file is unexecuted and its Pest tests will run
-for the first time in CI. `packages/sync/src/reference-server.ts` is the
-behaviour the sync half must reproduce, and the acceptance suite runs the real
-client against it — the contract is pinned even though the implementation of it
-is not yet exercised.
+**The backend's own test suite now runs: 241 tests, 951 assertions, green.**
+It had never been executed — `composer install` fails on `phpstan/phpstan`,
+which exists only as a dist zipball from a host the egress policy refuses, and
+that one package took Pest down with it. `tools/make-test-manifest.php` in the
+backend repo generates a manifest without `larastan`, which is the only thing
+that needs phpstan, and everything installs.
+
+The first run found one real defect: the GDPR export handed back `FamilyRole`
+enum instances where Art. 20 asks for something machine-readable. Fixed.
+
+One test was added, for the rate-limiter defect that the browser run surfaced
+earlier. Making it mean anything took three attempts: the suite runs on the
+array cache store, so `throttleWithRedis()` is never reached and a version that
+drove the endpoint twice passed with the defect deliberately reinstated. The
+kept version asserts the value handed to the limiter, and was confirmed to fail
+with the defect restored before being trusted.
+
+`packages/sync/src/reference-server.ts` remains the behaviour the sync half must
+reproduce, and the acceptance suite runs the real client against it.
 
 **Three transports are backend work by design**, not omissions: the AI provider
 call (SPEC AI-01 puts it server-side), the calendar providers' OAuth APIs, and
 inbound mail. All three are now written — `src/AI`, `src/Calendar/Connectors`,
-`src/Mail` — and share the caveat above: unexecuted. In each case the *decisions*
-those transports must respect are implemented and tested here, which is what
-makes them reviewable at all.
+`src/Mail`. They are covered by the suite only as far as their decisions go; the
+transports themselves have never spoken to a real provider, because that needs
+credentials rather than code. In each case the *decisions* those transports must
+respect are implemented and tested, which is what makes them reviewable at all.
 
 What they still need from the outside world is credentials and a contract, not
 code: an AI provider whose processor agreement commits in writing to EU hosting,

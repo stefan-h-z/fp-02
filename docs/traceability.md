@@ -20,7 +20,7 @@ nothing to cite it, and needs no code of its own.
 | **by design** | a negative or architectural statement, true by construction |
 | **missing** | genuinely not implemented |
 | **partial** | the substance exists, a named part of the requirement does not |
-| **backend** | server-side, present in `backend-php-01` but unexecuted, or needing a provider |
+| **backend** | server-side, in `backend-php-01`; its suite runs (241 tests), but the transports need a live provider |
 | **platform** | needs a device, store or OS capability |
 | **organizational** | a legal or operational duty, not code |
 | **parked** | deliberately out of scope per SPEC OPEN-02 |
@@ -320,7 +320,8 @@ is no font-size control of the app's own).
 
 Which means the specification is very nearly answered, and the project's real
 risk has moved somewhere this table does not measure: the ten **backend** rows
-are PHP that has been read but barely run, the eight **platform** rows need a
+are PHP whose own suite now runs green but whose transports have never spoken to
+a real provider, the eight **platform** rows need a
 device and a store account, and the twelve **organizational** rows need
 signatures. None of those is closed by writing more application code.
 

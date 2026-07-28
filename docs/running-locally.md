@@ -32,11 +32,33 @@ php artisan migrate --force
 php artisan app:create family --name="Family App"   # prints the client id
 ```
 
-`--no-dev` is not a preference. Exactly one package in the lock —
-`phpstan/phpstan` — has no `source` entry at all, so `--prefer-source` cannot
-reach it and the whole install fails on that one package. The consequence is
-that **Pest is not installed either**, so the module's own tests have not been
-run here; everything below exercises it over HTTP instead.
+`--no-dev` here is about one package. `phpstan/phpstan` is published only as a
+dist zipball from `api.github.com`, which the egress policy refuses, and it has
+no `source` entry either — so `--prefer-source` cannot reach it and the whole
+install fails on that one name. Its git mirror is not a way around it: the
+phpstan repository carries every phar it has ever released and the clone runs
+past a gigabyte before finishing.
+
+Only `larastan` depends on it, and static analysis is not worth being unable to
+run the tests. So the dev environment comes from a generated manifest that drops
+exactly that one dependency:
+
+```bash
+php tools/make-test-manifest.php          # composer.json minus larastan
+COMPOSER=composer-test.json COMPOSER_ALLOW_SUPERUSER=1 composer install
+./vendor/bin/pest                          # 241 tests
+```
+
+Generated rather than committed, so it cannot drift from `composer.json` — a
+second hand-maintained manifest would quietly stop matching the first, and the
+tests would then run against dependencies nobody ships. Both it and its lock
+file are gitignored.
+
+The suite runs on SQLite in memory and the array cache store, which matters for
+one thing: `throttleWithRedis()` is never reached there, so a rate-limiter
+defect that only appears under Redis cannot be reproduced by driving an endpoint
+twice. `tests/Feature/Platform/RateLimitTest.php` asserts the limiter's return
+value instead, and says why in place.
 
 `app:create` prints a client id. Every family endpoint needs it: the platform
 reads which app a request belongs to from the access token's OAuth client, and a
