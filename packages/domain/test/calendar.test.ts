@@ -63,6 +63,41 @@ describe("recurrence expansion (FR-205)", () => {
     expect(days).toEqual([2, 4, 2, 4]);
   });
 
+  /**
+   * A weekly event whose weekday list nobody filled in used to fall through to
+   * the daily step, quietly turning one swimming lesson a week into seven.
+   */
+  it("means seven days when a weekly series names no weekday", () => {
+    seedEvent("e-club", {
+      startsAt: BASE + 16 * HOUR,
+      endsAt: BASE + 17 * HOUR,
+      recurrence: "weekly",
+    });
+
+    const dates = expandEvent(readEvent(state, "e-club")!, state, {
+      from: BASE,
+      to: BASE + 22 * DAY_MS,
+    }).map((o) => new Date(o.startsAt).toISOString().slice(0, 10));
+
+    expect(dates).toEqual(["2026-08-01", "2026-08-08", "2026-08-15", "2026-08-22"]);
+  });
+
+  /** A/B school weeks, alternating custody, the every-other-Saturday club. */
+  it("expands a fortnightly series every fourteen days", () => {
+    seedEvent("e-scouts", {
+      startsAt: BASE + 16 * HOUR,
+      endsAt: BASE + 17 * HOUR,
+      recurrence: "fortnightly",
+    });
+
+    const dates = expandEvent(readEvent(state, "e-scouts")!, state, {
+      from: BASE,
+      to: BASE + 43 * DAY_MS,
+    }).map((o) => new Date(o.startsAt).toISOString().slice(0, 10));
+
+    expect(dates).toEqual(["2026-08-01", "2026-08-15", "2026-08-29", "2026-09-12"]);
+  });
+
   it("keeps a monthly series at the end of short months instead of drifting", () => {
     seedEvent("e-rent", {
       startsAt: Date.parse("2026-01-31T09:00:00Z"),

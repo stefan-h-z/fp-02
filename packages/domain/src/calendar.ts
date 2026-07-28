@@ -24,7 +24,13 @@ import {
 } from "./schema.js";
 import type { FamilyState } from "./state.js";
 
-export type RecurrenceKind = "none" | "daily" | "weekly" | "monthly";
+/**
+ * `fortnightly` is here because family life has it — A/B school weeks (FR-802),
+ * alternating custody, the every-other-Saturday club — and because a suggestion
+ * the app makes (FR-1108) that the calendar cannot then express is a suggestion
+ * with no accept button.
+ */
+export type RecurrenceKind = "none" | "daily" | "weekly" | "fortnightly" | "monthly";
 
 export interface EventDefinition {
   readonly id: string;
@@ -96,8 +102,17 @@ export function readEvent(state: FamilyState, eventId: string): EventDefinition 
   };
 }
 
+const RECURRENCE_KINDS: readonly RecurrenceKind[] = [
+  "daily",
+  "weekly",
+  "fortnightly",
+  "monthly",
+];
+
 function recurrenceKindOf(value: string): RecurrenceKind {
-  return value === "daily" || value === "weekly" || value === "monthly" ? value : "none";
+  return (RECURRENCE_KINDS as readonly string[]).includes(value)
+    ? (value as RecurrenceKind)
+    : "none";
 }
 
 export function occurrenceId(eventId: string, startsAt: number): string {
@@ -178,10 +193,16 @@ function startTimes(event: EventDefinition, from: number, until: number): readon
     return out;
   }
 
+  // Everything left steps by a fixed number of days from the original date.
+  // "weekly" reaches here when nobody named a weekday, and it must still mean
+  // seven days — falling through to a daily step would quietly turn one swimming
+  // lesson a week into seven.
+  const step = event.recurrence === "fortnightly" ? 14 : event.recurrence === "weekly" ? 7 : 1;
+
   let at = event.startsAt;
   while (at <= until && out.length < limit) {
     if (at >= from - DAY_MS) out.push(at);
-    at += DAY_MS;
+    at += step * DAY_MS;
   }
   return out;
 }

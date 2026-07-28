@@ -221,14 +221,18 @@ export function readConsents(state: FamilyState, personId: string): readonly Con
 /**
  * Whether behavioural learning may run for this person (SPEC AI-06, FR-1417).
  *
- * Two independent gates, both of which must be open: the family may switch
- * learning off entirely, and children are excluded unconditionally — a child
- * profile carries no analysis of any kind, which is not a setting.
+ * Three independent gates, all of which must be open: the family may switch
+ * learning off entirely, children are excluded unconditionally — a child profile
+ * carries no analysis of any kind, which is not a setting — and one person may
+ * object on their own behalf without the family switching anything off
+ * (FR-1416). The third gate is what makes the objection a right rather than a
+ * checkbox: it is read here, where the processing actually happens.
  */
 export function learningAllowed(state: FamilyState, personId: string | null): boolean {
   const family = state.all(EntityTypes.family)[0];
   if (family !== undefined && family.fields["learningEnabled"] === false) return false;
   if (personId === null) return true;
+  if (!mayProcess(state, personId, OBJECTABLE_PROCESSINGS.behaviourLearning)) return false;
 
   return !state
     .all(EntityTypes.membership)
@@ -260,4 +264,98 @@ function toExported(entity: StoredEntity): ExportedEntity {
     sets[field] = setMembers(entity, field);
   }
   return { id: entity.id, type: entity.type, fields: entity.fields, sets };
+}
+
+// ── Objection against individual processings (FR-1416, Art. 21) ───────────
+
+/**
+ * The processings a person may object to, one at a time.
+ *
+ * Art. 21 is not the consent switch and this list is not the consent list. A
+ * consent asks permission before something starts; an objection stops something
+ * that is otherwise lawful, and it has to be possible to stop *one* of them
+ * without stopping the app. That is why this is an enumeration rather than a
+ * boolean: "I do not want my behaviour analysed, but keep the reminders" is a
+ * sentence a person is entitled to say, and a single opt-out switch cannot hear
+ * it.
+ *
+ * Everything named here is something the app does on its own initiative. Work a
+ * person explicitly asked for is not on the list, because objecting to it would
+ * mean objecting to using the app, and Art. 21 is not a deletion request.
+ */
+export const OBJECTABLE_PROCESSINGS = {
+  /** Rhythms, replenishment clocks, suggested recurrences (LRN, FR-1108). */
+  behaviourLearning: "behaviourLearning",
+  /** Sending text to the AI gateway to be structured (§16A). */
+  aiProcessing: "aiProcessing",
+  /** Push notifications the app decides to send, digests included. */
+  proactiveNotifications: "proactiveNotifications",
+  /** Being counted in the mental-load balance a partner can see (§12). */
+  mentalLoadAnalysis: "mentalLoadAnalysis",
+  /** Geofenced shopping reminders evaluated from the device's location (FR-719). */
+  locationReminders: "locationReminders",
+} as const;
+
+export type ObjectableProcessing =
+  (typeof OBJECTABLE_PROCESSINGS)[keyof typeof OBJECTABLE_PROCESSINGS];
+
+export interface Objection {
+  readonly personId: string;
+  readonly processing: ObjectableProcessing;
+  readonly raisedAt: string;
+  /** Reasons are optional in law and stay optional here (Art. 21(1)). */
+  readonly reason: string | undefined;
+  readonly withdrawnAt: string | undefined;
+}
+
+export function readObjections(state: FamilyState, personId: string): readonly Objection[] {
+  return state
+    .all(EntityTypes.consent)
+    .filter(
+      (entity) =>
+        readString(entity, "personId") === personId && readString(entity, "kind") === "objection",
+    )
+    .map((entity) => ({
+      personId,
+      processing: readString(entity, "subject") as ObjectableProcessing,
+      raisedAt: readString(entity, "raisedAt"),
+      reason: readOptionalString(entity, "reason"),
+      withdrawnAt: readOptionalString(entity, "withdrawnAt"),
+    }))
+    .filter((objection) =>
+      (Object.values(OBJECTABLE_PROCESSINGS) as readonly string[]).includes(objection.processing),
+    );
+}
+
+/**
+ * Whether a processing may run for this person right now.
+ *
+ * The default is "yes", and that is deliberate rather than lax: a processing
+ * nobody objected to is one the family agreed to when they set the app up. What
+ * this function guarantees is that a single objection stops a single thing —
+ * immediately, without a review step, and without touching anything else the
+ * person still wants.
+ */
+export function mayProcess(
+  state: FamilyState,
+  personId: string,
+  processing: ObjectableProcessing,
+): boolean {
+  return !readObjections(state, personId).some(
+    (objection) => objection.processing === processing && objection.withdrawnAt === undefined,
+  );
+}
+
+/**
+ * Everything currently switched off for this person, for the screen that has to
+ * show them what their objections are actually doing. An objection a person
+ * cannot see the effect of is a checkbox, not a right.
+ */
+export function activeObjections(
+  state: FamilyState,
+  personId: string,
+): readonly ObjectableProcessing[] {
+  return readObjections(state, personId)
+    .filter((objection) => objection.withdrawnAt === undefined)
+    .map((objection) => objection.processing);
 }
