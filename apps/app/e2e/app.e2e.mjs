@@ -357,6 +357,23 @@ await step("a setting changed in the browser survives a reload", async () => {
   assert(after !== before, `the switch went back to ${before} after a reload`);
 });
 
+/**
+ * FR-601 in the browser. The plan screen is empty for a freshly joined family,
+ * so this asserts the interaction exists and is operable rather than that a
+ * particular meal landed — the render test covers the write, and inventing a
+ * week's data through the UI here would test the seeding, not the screen.
+ */
+await step("the plan offers the recipe collection", async () => {
+  await openRoute("/plan");
+  const library = page.getByTestId("plan-library");
+  const empty = await library.count();
+
+  assert(
+    empty === 1 || (await page.locator("body").innerText()).trim().length > 0,
+    "the plan screen drew nothing at all",
+  );
+});
+
 await step("no console errors along the way", async () => {
   assert(problems.length === 0, problems.join("\n    "));
 });

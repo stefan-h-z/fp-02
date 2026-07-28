@@ -7,7 +7,7 @@
  * library does and would tell nobody whether dinner still works.
  */
 import { describe, expect, it } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { fireEvent, screen, within } from "@testing-library/react-native";
 import { EntityTypes } from "@fam/domain";
 import { CookModeScreen } from "../src/screens/CookModeScreen.js";
 import { WeekPlanScreen } from "../src/screens/WeekPlanScreen.js";
@@ -52,13 +52,58 @@ async function withPlannedWeek(): Promise<Harness> {
 }
 
 describe("WeekPlanScreen (SPEC §9)", () => {
+  /**
+   * FR-601, as the two taps that replace a drag.
+   *
+   * Asserted through the sync client rather than through the label, because the
+   * thing that has to be true is that the recipe reached the slot — a screen
+   * that repainted without writing would pass a text assertion and lose the
+   * meal.
+   */
+  it("puts a recipe from the collection onto a slot", async () => {
+    const harness = await withPlannedWeek();
+    await harness.mutate((b) => {
+      b.create(EntityTypes.recipe, "recipe-soup", { title: "Bean soup", servings: 4 });
+      b.create(EntityTypes.mealSlot, "slot-wed", {
+        weekPlanId: WEEK,
+        date: "2026-07-29",
+        mealType: "dinner",
+      });
+    });
+
+    mount(harness, <WeekPlanScreen weekPlanId={WEEK} eaterIds={["person-mum"]} />);
+
+    fireEvent.press(screen.getByTestId("plan-library-recipe-soup"));
+    fireEvent.press(screen.getByTestId("plan-target-slot-wed"));
+
+    await waitForState(harness, (state) =>
+      state
+        .all(EntityTypes.mealSlot)
+        .some((slot) => slot.fields["date"] === "2026-07-29" && slot.fields["recipeId"] === "recipe-soup"),
+    );
+  });
+
+  /** Picking up the wrong recipe must not force a meal to be planned. */
+  it("lets a recipe be put back down", async () => {
+    const harness = await withPlannedWeek();
+
+    mount(harness, <WeekPlanScreen weekPlanId={WEEK} eaterIds={["person-mum"]} />);
+
+    fireEvent.press(screen.getByTestId("plan-library-" + RECIPE));
+    expect(screen.getByTestId("plan-targets")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("plan-place-cancel"));
+    expect(screen.getByTestId("plan-library")).toBeTruthy();
+  });
+
   it("shows what is planned, by the name a person recognises", async () => {
     const harness = await withPlannedWeek();
 
     mount(harness, <WeekPlanScreen weekPlanId={WEEK} eaterIds={["person-mum", "person-dad"]} />);
 
-    expect(screen.getByTestId("slot-slot-tue")).toBeTruthy();
-    expect(screen.getByText("Bolognese")).toBeTruthy();
+    // Scoped to the slot: the same title also appears in the recipe collection
+    // below, which is not a duplicate but the same recipe in its two roles.
+    expect(within(screen.getByTestId("slot-slot-tue")).getByText("Bolognese")).toBeTruthy();
   });
 
   /**

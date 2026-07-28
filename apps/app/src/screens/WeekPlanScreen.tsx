@@ -34,6 +34,8 @@ export function WeekPlanScreen(props: WeekPlanScreenProps): ReactNode {
   const t = useTranslator();
   const { actorId, now } = useRuntime();
   const [rejected, setRejected] = useState<readonly string[]>([]);
+  // Which recipe the family has picked up and not yet put down (FR-601).
+  const [carrying, setCarrying] = useState<string | undefined>(undefined);
 
   const slots = useMemo(
     () =>
@@ -76,6 +78,16 @@ export function WeekPlanScreen(props: WeekPlanScreenProps): ReactNode {
         rejected,
       ),
     [state, now, props.eaterIds, props.maxMinutes, plannedRecipeIds, rejected],
+  );
+
+  const library = useMemo(
+    () =>
+      state
+        .all(EntityTypes.recipe)
+        .filter((recipe) => !recipe.deleted)
+        .map((recipe) => ({ id: recipe.id, title: readString(recipe, "title") }))
+        .filter((recipe) => recipe.title.length > 0),
+    [state],
   );
 
   const planningOwnerId = readOptionalString(state.get(EntityTypes.weekPlan, props.weekPlanId), "planningOwnerId");
@@ -122,6 +134,78 @@ export function WeekPlanScreen(props: WeekPlanScreenProps): ReactNode {
             />
           ))}
         </List>
+      )}
+
+      {/*
+        FR-601, as pick-up-then-put-down rather than a pointer drag.
+        A drag is one gesture on a mouse and an awkward one on a phone, and it
+        is unusable by anyone navigating with a keyboard or a screen reader —
+        so the interaction is two taps that name what they do. The recipe being
+        carried is announced in the heading, which is what a drag communicates
+        by having the thing under your finger.
+      */}
+      <Text role="heading3">
+        {carrying === undefined
+          ? t.t("plan.library")
+          : t.t("plan.place", {
+              recipe: readString(state.get(EntityTypes.recipe, carrying), "title"),
+            })}
+      </Text>
+
+      {carrying === undefined ? (
+        <List testID="plan-library">
+          {library.map((recipe) => (
+            <List.Item
+              key={recipe.id}
+              label={recipe.title}
+              leadingIcon="utensils"
+              pressable
+              onPress={() => setCarrying(recipe.id)}
+              testID={"plan-library-" + recipe.id}
+            />
+          ))}
+        </List>
+      ) : (
+        <>
+          <List testID="plan-targets">
+            {slots.map((slot) => (
+              <List.Item
+                key={slot.id}
+                label={t.t("plan.slotEmpty", {
+                  day: t.formatRelativeDay(Date.parse(slot.date), now()),
+                  meal: slot.mealType,
+                })}
+                subtitle={slot.title}
+                leadingIcon="calendar"
+                pressable
+                onPress={() => {
+                  const recipeId = carrying;
+                  setCarrying(undefined);
+                  void planMeal(mutate, {
+                    weekPlanId: props.weekPlanId,
+                    date: slot.date,
+                    mealType: slot.mealType,
+                    recipeId,
+                    eaterIds: props.eaterIds,
+                    ...(actorId === null ? {} : { cookOwnerId: actorId }),
+                  });
+                }}
+                testID={"plan-target-" + slot.id}
+              />
+            ))}
+          </List>
+
+          {/* Putting it back down is as important as picking it up: a person
+              who picks up the wrong recipe must not have to plan a meal to
+              escape. */}
+          <Button
+            label={t.t("plan.placeCancel")}
+            variant="ghost"
+            size="sm"
+            onPress={() => setCarrying(undefined)}
+            testID="plan-place-cancel"
+          />
+        </>
       )}
 
       <Text role="heading3">{t.t("plan.suggest")}</Text>

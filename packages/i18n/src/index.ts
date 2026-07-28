@@ -75,6 +75,10 @@ export const en = {
   "plan.reroll": "Something else",
   "plan.emergency": "From the cupboard",
   "plan.leftovers": "Leftovers",
+  "plan.library": "From the recipe collection",
+  "plan.place": "Put {recipe} where?",
+  "plan.placeCancel": "Never mind",
+  "plan.slotEmpty": "{meal} on {day}",
 
   "recipe.servings": "For {count} people",
   "recipe.cookMode": "Cook mode",
@@ -252,6 +256,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "plan.reroll": "Etwas anderes",
   "plan.emergency": "Aus dem Vorrat",
   "plan.leftovers": "Reste",
+  "plan.library": "Aus der Rezeptsammlung",
+  "plan.place": "Wohin mit {recipe}?",
+  "plan.placeCancel": "Doch nicht",
+  "plan.slotEmpty": "{meal} am {day}",
 
   "recipe.servings": "Für {count} Personen",
   "recipe.cookMode": "Kochmodus",
