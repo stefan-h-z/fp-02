@@ -1,0 +1,32 @@
+{
+  "extends": "./packages/config/tsconfig.base.json",
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/test/**/*.ts",
+    "e2e/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@fam/domain": [
+        "./packages/domain/src/index.ts"
+      ],
+      "@fam/storage": [
+        "./packages/storage/src/index.ts"
+      ],
+      "@fam/sync": [
+        "./packages/sync/src/index.ts"
+      ],
+      "@fam/api": [
+        "./packages/api/src/index.ts"
+      ],
+      "@fam/i18n": [
+        "./packages/i18n/src/index.ts"
+      ]
+    }
+  }
+}
