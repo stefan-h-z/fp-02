@@ -77,10 +77,12 @@ repository (store submission, live provider accounts).
 **Screens.** Five screens exist — today, shopping, week plan, protocol and
 conflict resolution — bound to the tested command and selector layer and
 typechecked against the real prop types of `@cp/ui` (three API mismatches
-surfaced that way and were fixed). They are *not* render-tested, and the Expo
-shell around them (router, Tamagui provider, Metro config, entry point) is not
-wired, so the app cannot be launched yet. The remaining screens follow the same
-shape: read a selector, render it, call a command.
+surfaced that way and were fixed). The Expo shell is wired and
+`pnpm --filter @fam/app export:web` completes, so the whole chain bundles. What
+is still missing: the screens are not render-tested, the shell opens an
+in-memory store rather than the platform SQLite driver, and there is no join
+flow yet, so the client starts unauthenticated and local-only. The remaining
+screens follow the same shape: read a selector, render it, call a command.
 
 Two consequences worth stating. The design-system packages are currently
 declared as a `link:` to a checkout of `cp-testt1-09` beside this repository,
