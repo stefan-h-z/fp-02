@@ -8,3 +8,6 @@ coverage/
 .env.*
 !.env.example
 web-build/
+
+# Scratch files from review passes — never part of the suite.
+**/__review.test.ts
