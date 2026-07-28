@@ -95,12 +95,27 @@ implemented and tested here.
 **Two things need a native capability**: home-screen widgets and keeping the
 display awake in cook mode. Both are named TODOs rather than stubs.
 
-**The screens are not render-tested.** Attempted and abandoned deliberately:
-rendering React Native components under Vitest needs React Native's Flow syntax
-put through a Babel transform, which an alias to `react-native-web` does not
-achieve — it is a jest-preset-shaped problem, not a config line. The screens do
-typecheck against the design system's real prop types, and `expo export` proves
-they bundle. A proper render harness is a follow-up worth doing.
+**The screens now render under test, thinly.** The earlier note here was right
+about the cause — React Native's Flow syntax needs a Babel transform Vitest does
+not provide — and right about the shape of the fix: it is a jest preset.
+`apps/app/jest.config.cjs` runs `jest-expo` over `apps/app/render-test/` only,
+so Vitest keeps everything else and the two runners never see each other's
+files. `pnpm --filter @fam/app test:render`.
+
+It earned its place immediately. The first thing it caught was that **every one
+of the app's sixteen icons was silently rejected at registration**: `registerIcons`
+accepts a glyph only when `typeof glyph === "function"`, lucide ships `forwardRef`
+objects, and `IconComponent` is a bare call signature that a `forwardRef` object
+structurally satisfies — so the compiler was content, each name was skipped one
+at a time behind a dev warning nobody was reading, and the pill, the utensils and
+the whole of a child's routine rendered as placeholders. `icons.ts` now wraps
+each glyph in a plain function, and `render-test/icons.test.tsx` fails without
+that wrapper.
+
+Coverage is honestly thin: seven tests over the shopping list, the conflict
+screen and icon registration. The remaining screens are still only proven to
+typecheck and bundle. The harness is the part that was hard; adding cases to it
+is now ordinary work.
 
 **The web build persists through IndexedDB, not wa-sqlite.** This is the
 fallback PLAN §3.3 named for WP-0.7, and it was taken on the merits rather than
@@ -119,7 +134,7 @@ repository, which installs locally but not in CI — hence the split CI, whose
 
 **Two routine glyphs are stand-ins.** The app registers the icons it needs
 through the design system's own `registerIcons` extension point
-(`apps/app/src/icons.ts`), so nothing renders a placeholder — but lucide has no
-toothbrush or hairbrush, and a routine icon a four-year-old cannot recognise is
-worse than a generic one. Those two need real artwork before the kids' view
-ships (FR-1206).
+(`apps/app/src/icons.ts`), and a render test now proves the registration takes —
+but lucide has no toothbrush or hairbrush, and a routine icon a four-year-old
+cannot recognise is worse than a generic one. Those two need real artwork before
+the kids' view ships (FR-1206).

@@ -8,7 +8,9 @@
     "apps/*/test/**/*.ts",
     "apps/*/test/**/*.tsx",
     "e2e/**/*.ts",
-    "apps/*/app/**/*.tsx"
+    "apps/*/app/**/*.tsx",
+    "apps/*/render-test/**/*.ts",
+    "apps/*/render-test/**/*.tsx"
   ],
   "exclude": [
     "node_modules",

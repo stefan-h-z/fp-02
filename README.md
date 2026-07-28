@@ -86,11 +86,12 @@ stayed offline throughout catches up correctly.
 Stated plainly, because a half-built thing described as finished is worse than one
 described accurately:
 
-- **Rendered proof of the screens.** Ten screens exist — join, today, my day,
-  shopping, week plan, cook mode, a child's routine, protocol, conflict resolution
-  and settings — and `pnpm --filter @fam/app export:web` bundles the whole chain.
-  They typecheck against the design system's real prop types but are not
-  render-tested.
+- **Broad rendered proof of the screens.** Ten screens exist — join, today, my
+  day, shopping, week plan, cook mode, a child's routine, protocol, conflict
+  resolution and settings — and `pnpm --filter @fam/app export:web` bundles the
+  whole chain. A jest-expo harness (`pnpm --filter @fam/app test:render`) renders
+  them against the real design system, but only the shopping list, the conflict
+  screen and icon registration have cases so far.
 - **A running backend.** The family module for the Laravel platform lives in
   `backend-php-01` and has never been executed: this environment cannot fetch
   Composer packages. `packages/sync/src/reference-server.ts` is the executable

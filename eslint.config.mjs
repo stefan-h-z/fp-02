@@ -4,9 +4,15 @@ export default tseslint.config(
   { ignores: ["**/dist/**", "**/node_modules/**", "**/.expo/**"] },
   ...tseslint.configs.recommended,
   {
-    // Metro and Babel load their config through CommonJS before any bundler
-    // runs, so these two files cannot be ESM.
-    files: ["**/metro.config.cjs", "**/babel.config.cjs"],
+    // Metro, Babel and Jest each load their config — and Jest its resolver —
+    // through CommonJS before any transform is in place, so these cannot be ESM
+    // even though the packages holding them are.
+    files: [
+      "**/metro.config.cjs",
+      "**/babel.config.cjs",
+      "**/jest.config.cjs",
+      "**/render-test/resolve.cjs",
+    ],
     rules: { "@typescript-eslint/no-require-imports": "off" },
   },
   {

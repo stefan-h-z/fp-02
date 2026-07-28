@@ -10,6 +10,7 @@
  * and warns in development, which is why this list is worth keeping honest: a
  * missing glyph is a silent-looking bug on a screen a child is meant to read.
  */
+import { createElement } from "react";
 import { registerIcons, type IconComponent } from "@cp/ui";
 import {
   Backpack,
@@ -28,7 +29,23 @@ import {
   Sparkles,
   Timer,
   Utensils,
+  type LucideIcon,
 } from "lucide-react-native";
+
+/**
+ * Wraps a lucide icon in a plain function component.
+ *
+ * Not ceremony: `registerIcons` accepts a glyph only if `typeof glyph ===
+ * "function"`, and lucide's icons are `forwardRef` objects, so registering one
+ * directly is rejected — individually and at runtime, leaving every name to fall
+ * back to a placeholder. TypeScript could not catch it because `IconComponent`
+ * is a bare call signature that a `forwardRef` object structurally satisfies;
+ * the `as IconComponent` casts this file used to carry were hiding it. A render
+ * test caught it (`render-test/icons.test.tsx`), which is why that test exists.
+ */
+function glyph(Source: LucideIcon): IconComponent {
+  return (props) => createElement(Source, props);
+}
 
 /**
  * Kebab-case names, matching the design system's convention. The two flagged
@@ -38,28 +55,28 @@ import {
  */
 const APP_ICONS: Readonly<Record<string, IconComponent>> = {
   // Protocols and health
-  pill: Pill as IconComponent,
-  timer: Timer as IconComponent,
+  pill: glyph(Pill),
+  timer: glyph(Timer),
 
   // Meals
-  utensils: Utensils as IconComponent,
-  package: Package as IconComponent,
+  utensils: glyph(Utensils),
+  package: glyph(Package),
 
   // Calendar and lists
-  calendar: Calendar as IconComponent,
-  clock: Clock as IconComponent,
-  circle: Circle as IconComponent,
-  "minus-circle": CircleMinus as IconComponent,
-  filter: Filter as IconComponent,
+  calendar: glyph(Calendar),
+  clock: glyph(Clock),
+  circle: glyph(Circle),
+  "minus-circle": glyph(CircleMinus),
+  filter: glyph(Filter),
 
   // A child's routine (FR-1207)
-  backpack: Backpack as IconComponent,
-  shirt: Shirt as IconComponent,
-  bath: Bath as IconComponent,
-  bed: BedDouble as IconComponent,
-  shoes: Footprints as IconComponent,
-  toothbrush: Brush as IconComponent, // stand-in, see above
-  tidy: Sparkles as IconComponent, // stand-in, see above
+  backpack: glyph(Backpack),
+  shirt: glyph(Shirt),
+  bath: glyph(Bath),
+  bed: glyph(BedDouble),
+  shoes: glyph(Footprints),
+  toothbrush: glyph(Brush), // stand-in, see above
+  tidy: glyph(Sparkles), // stand-in, see above
 };
 
 let registered = false;
