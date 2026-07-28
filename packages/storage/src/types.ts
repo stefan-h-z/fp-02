@@ -47,3 +47,7 @@ export const META_LAST_SEQ = "sync.lastSeq";
 export const META_DEVICE_ID = "device.id";
 export const META_FAMILY_ID = "family.id";
 export const META_SCHEMA_VERSION = "schema.version";
+/** The hybrid logical clock survives a restart, or the device's own newer edit
+ * could lose to its own older one after a clock correction. */
+export const META_CLOCK_WALL = "clock.wall";
+export const META_CLOCK_COUNTER = "clock.counter";

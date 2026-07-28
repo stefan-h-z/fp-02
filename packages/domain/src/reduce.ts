@@ -119,8 +119,24 @@ function applyFields(base: StoredEntity, op: Operation, isCreate: boolean): Redu
       }
 
       if (valuesEqual(current, value)) {
-        // Same destination reached twice. Keep the earlier authorship so "who
-        // acknowledged the dose" stays the person who actually did it first.
+        // Same destination reached twice — both parents gave the dose. The
+        // authorship that survives must be the one that happened first in real
+        // time, not the one whose device reached the server first (SPEC §12.2
+        // acceptance 2), so an earlier stamp displaces a later one.
+        // The version deliberately does NOT advance here. It counts value
+        // changes, so that replaying the log — which happens after any
+        // interrupted pull — lands on identical state. Advancing it would make
+        // a second application differ from the first, and replay idempotency is
+        // worth more than making the conflict count independent of push order:
+        // base versions are optimistic concurrency, and being order-sensitive is
+        // what they are for.
+        if (previous !== undefined && hlcLater(previous.hlc, op.hlc)) {
+          entity = {
+            ...entity,
+            meta: { ...entity.meta, [field]: { ...previous, hlc: op.hlc, actorId: op.actorId } },
+          };
+          changed = true;
+        }
         continue;
       }
 
@@ -129,13 +145,17 @@ function applyFields(base: StoredEntity, op: Operation, isCreate: boolean): Redu
       continue;
     }
 
-    // Tier 1: last writer wins, and equal values are a no-op, which is what
-    // makes checking an item off twice harmless (FR-1219).
+    // Tier 1: last writer wins. A redundant write — the same value again — is
+    // not a no-op for the bookkeeping: it must still raise the field's
+    // watermark, or an older write arriving afterwards would win and the result
+    // would depend on the order operations happened to arrive in.
     if (previous !== undefined && !hlcLater(op.hlc, previous.hlc)) continue;
-    if (previous !== undefined && valuesEqual(current, value)) continue;
 
-    entity = withField(entity, field, value, nextMeta(previous, op));
-    changed = true;
+    const redundant = previous !== undefined && valuesEqual(current, value);
+    entity = redundant
+      ? { ...entity, meta: { ...entity.meta, [field]: { ...previous, hlc: op.hlc } } }
+      : withField(entity, field, value, nextMeta(previous, op));
+    changed = changed || !redundant;
   }
 
   return { entity, changed, conflicts };
@@ -168,15 +188,16 @@ function applySetChange(base: StoredEntity, op: Operation, add: boolean): Reduce
   if (previous !== undefined && !hlcLater(op.hlc, previous.hlc)) {
     return { entity: base, changed: false, conflicts: [] };
   }
-  if (previous?.present === add) {
-    return { entity: base, changed: false, conflicts: [] };
-  }
 
+  // As with Tier-1 fields, a redundant change still raises the member's
+  // watermark: without it, adding something twice would leave an older removal
+  // able to win, and the result would depend on arrival order.
+  const redundant = previous?.present === add;
   const entity: StoredEntity = {
     ...base,
     sets: { ...base.sets, [field]: { ...bag, [member]: { present: add, hlc: op.hlc } } },
   };
-  return { entity, changed: true, conflicts: [] };
+  return { entity, changed: !redundant, conflicts: [] };
 }
 
 /** Rebuild an entity from its operations — used by history views and repair. */

@@ -116,6 +116,46 @@ describe("reducer — Tier 1 (merges silently)", () => {
   });
 });
 
+describe("reducer — order independence", () => {
+  it("reaches the same result whichever order a redundant and an older write arrive in", () => {
+    const first = op("entity.setFields", "shoppingItem", "item-1", { note: "small" }, { wall: 1000 });
+    const older = op("entity.setFields", "shoppingItem", "item-1", { note: "large" }, { wall: 2000 });
+    const redundant = op("entity.setFields", "shoppingItem", "item-1", { note: "small" }, { wall: 3000 });
+
+    const forwards = new FamilyState();
+    forwards.applyAll([first, older, redundant]);
+    const shuffled = new FamilyState();
+    shuffled.applyAll([first, redundant, older]);
+
+    expect(shuffled.get("shoppingItem", "item-1")?.fields["note"]).toBe(
+      forwards.get("shoppingItem", "item-1")?.fields["note"],
+    );
+  });
+
+  it("raises the watermark on a redundant set change, so an older removal cannot win", () => {
+    const add = op("set.add", "mealSlot", "slot-1", { field: "eaters", member: "p1" }, { wall: 1000 });
+    const remove = op("set.remove", "mealSlot", "slot-1", { field: "eaters", member: "p1" }, { wall: 2000 });
+    const addAgain = op("set.add", "mealSlot", "slot-1", { field: "eaters", member: "p1" }, { wall: 3000 });
+
+    const forwards = new FamilyState();
+    forwards.applyAll([add, remove, addAgain]);
+    const shuffled = new FamilyState();
+    shuffled.applyAll([add, addAgain, remove]);
+
+    expect(setMembers(shuffled.get("mealSlot", "slot-1")!, "eaters")).toEqual(
+      setMembers(forwards.get("mealSlot", "slot-1")!, "eaters"),
+    );
+  });
+
+  it("does not bring an entity into existence for an operation that changes nothing", () => {
+    const state = new FamilyState();
+
+    state.apply(op("set.add", "mealSlot", "ghost", { field: "eaters" }));
+
+    expect(state.allIncludingDeleted("mealSlot")).toHaveLength(0);
+  });
+});
+
 describe("reducer — Tier 2 (never overwrites silently)", () => {
   it("applies a critical field change when the author saw the current version", () => {
     const state = new FamilyState();
@@ -176,6 +216,32 @@ describe("reducer — Tier 2 (never overwrites silently)", () => {
 
     expect(second.conflicts).toHaveLength(0);
     expect(state.get("protocolInstance", "dose-1")?.fields["state"]).toBe("acknowledged");
+    expect(state.get("protocolInstance", "dose-1")?.meta["state"]?.actorId).toBe("person-mum");
+  });
+
+  it("credits the dose to whoever gave it first, even when their device synced second", () => {
+    const state = new FamilyState();
+    state.apply(op("entity.create", "protocolInstance", "dose-1", { state: "due" }));
+
+    // Dad's phone reaches the server first, but mum gave the dose earlier.
+    const dad = op(
+      "entity.setFields",
+      "protocolInstance",
+      "dose-1",
+      { state: "acknowledged" },
+      { base: { state: 1 }, deviceId: "phone-dad", actorId: "person-dad", wall: 5000 },
+    );
+    const mum = op(
+      "entity.setFields",
+      "protocolInstance",
+      "dose-1",
+      { state: "acknowledged" },
+      { base: { state: 1 }, deviceId: "phone-mum", actorId: "person-mum", wall: 2000 },
+    );
+
+    state.apply(dad);
+    state.apply(mum);
+
     expect(state.get("protocolInstance", "dose-1")?.meta["state"]?.actorId).toBe("person-mum");
   });
 

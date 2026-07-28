@@ -50,8 +50,13 @@ export class FamilyState {
   }
 
   apply(op: Operation): ApplyOutcome {
-    const result = applyOperation(this.get(op.entityType, op.entityId), op);
-    if (result.changed || result.conflicts.length === 0) {
+    const existing = this.get(op.entityType, op.entityId);
+    const result = applyOperation(existing, op);
+
+    // An operation that changes nothing and names an entity nobody has ever
+    // created must not bring one into existence — otherwise a malformed message
+    // from an older client leaves an empty row behind on every device.
+    if (result.changed || existing !== undefined) {
       this.put(result.entity);
     }
     return { changed: result.changed, conflicts: result.conflicts };

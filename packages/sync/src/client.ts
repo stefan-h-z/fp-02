@@ -15,6 +15,8 @@ import {
   type SequencedOperation,
 } from "@fam/domain";
 import {
+  META_CLOCK_COUNTER,
+  META_CLOCK_WALL,
   META_LAST_SEQ,
   type ConflictRecord,
   type StateStore,
@@ -33,6 +35,22 @@ export interface SyncClientOptions {
 }
 
 export type ConflictChoice = "keep-current" | "take-incoming";
+
+/**
+ * The entity a resolution is recorded as.
+ *
+ * A conflict is detected independently by every device that replays the log, so
+ * the *decision* has to travel the same way — otherwise one person resolves it
+ * and everyone else keeps being asked about it forever (FR-1215).
+ */
+export const CONFLICT_RESOLUTION_TYPE = "conflictResolution";
+
+/**
+ * Rejections that will never succeed however often they are retried. Anything
+ * else — an unprovisioned family, a client newer than the server — is transient,
+ * and throwing the work away would be exactly the data loss FR-1217 forbids.
+ */
+const PERMANENT_REJECTIONS = new Set(["schema-invalid", "not-authorized"]);
 
 export interface SyncResult {
   readonly pushed: number;
@@ -75,6 +93,10 @@ export class SyncClient {
   async open(): Promise<void> {
     await this.store.init();
     this.cursor = Number(await this.store.getMeta(META_LAST_SEQ) ?? 0);
+    this.clock.restore({
+      wall: Number(await this.store.getMeta(META_CLOCK_WALL) ?? 0),
+      counter: Number(await this.store.getMeta(META_CLOCK_COUNTER) ?? 0),
+    });
 
     const types = await this.store.entityTypes();
     const state = new FamilyState();
@@ -100,12 +122,22 @@ export class SyncClient {
       deviceId: this.deviceId,
     });
     const state = new FamilyState();
-    for (const entity of snapshot.entities) state.put(entity);
+    for (const entity of snapshot.entities) {
+      state.put(entity);
+      // Without this the device would stamp its first writes from its own wall
+      // clock, and a phone a minute behind would have every edit silently lost
+      // to the values it was trying to change.
+      for (const meta of Object.values(entity.meta)) this.clock.observe(meta.hlc);
+      for (const members of Object.values(entity.sets)) {
+        for (const member of Object.values(members)) this.clock.observe(member.hlc);
+      }
+    }
     this.confirmed = state;
     this.cursor = snapshot.cursor;
 
     await this.store.putEntities(snapshot.entities);
     await this.store.setMeta(META_LAST_SEQ, String(this.cursor));
+    await this.persistClock();
     this.rebuildVisible();
     this.emit();
   }
@@ -144,6 +176,7 @@ export class SyncClient {
     if (ops.length === 0) return ops;
 
     await this.store.enqueueOutbox(ops);
+    await this.persistClock();
     for (const op of ops) {
       this.pending.set(op.opId, op);
       this.visible.apply(op);
@@ -178,16 +211,21 @@ export class SyncClient {
     // so the screen never flickers back to the pre-edit value in between.
     await this.store.dequeueOutbox(response.acceptedOpIds);
 
-    const rejected = response.rejected.map((r) => r.opId);
-    if (rejected.length > 0) {
-      await this.store.dequeueOutbox(rejected);
-      for (const opId of rejected) this.pending.delete(opId);
+    const permanent = response.rejected
+      .filter((rejection) => PERMANENT_REJECTIONS.has(rejection.reason))
+      .map((rejection) => rejection.opId);
+
+    if (permanent.length > 0) {
+      await this.store.dequeueOutbox(permanent);
+      for (const opId of permanent) this.pending.delete(opId);
       this.rebuildVisible();
       this.emit();
     }
+    const rejected = response.rejected.map((r) => r.opId);
 
-    if (response.conflicts.length > 0) {
-      await this.store.putConflicts(response.conflicts);
+    const unresolved = response.conflicts.filter((conflict) => !this.isResolved(conflict.id));
+    if (unresolved.length > 0) {
+      await this.store.putConflicts(unresolved);
     }
 
     return { pushed: response.acceptedOpIds.length, conflicts: response.conflicts, rejected };
@@ -222,7 +260,19 @@ export class SyncClient {
 
   /** Conflicts still waiting for a decision. */
   async openConflicts(): Promise<readonly ConflictRecord[]> {
-    return this.store.openConflicts();
+    const stored = await this.store.openConflicts();
+    return stored.filter((conflict) => !this.isResolved(conflict.id));
+  }
+
+  /** Was this conflict decided — by anyone, on any device? */
+  private isResolved(conflictId: string): boolean {
+    return this.visible.get(CONFLICT_RESOLUTION_TYPE, conflictId) !== undefined;
+  }
+
+  private async persistClock(): Promise<void> {
+    const state = this.clock.snapshot();
+    await this.store.setMeta(META_CLOCK_WALL, String(state.wall));
+    await this.store.setMeta(META_CLOCK_COUNTER, String(state.counter));
   }
 
   /**
@@ -231,11 +281,20 @@ export class SyncClient {
    * value writes nothing and only closes the conflict.
    */
   async resolveConflict(conflict: ConflictRecord, choice: ConflictChoice, atIso: string): Promise<void> {
-    if (choice === "take-incoming") {
-      await this.mutate((builder) => {
+    await this.mutate((builder) => {
+      if (choice === "take-incoming") {
         builder.force(conflict.entityType, conflict.entityId, conflict.field, conflict.incomingValue);
+      }
+      // Recorded as an operation rather than a local flag: the other devices
+      // detected this conflict themselves and would otherwise keep asking.
+      builder.create(CONFLICT_RESOLUTION_TYPE, conflict.id, {
+        entityType: conflict.entityType,
+        entityId: conflict.entityId,
+        field: conflict.field,
+        choice,
+        resolvedAt: atIso,
       });
-    }
+    });
     await this.store.markConflictResolved(conflict.id, atIso);
     this.emit();
   }
@@ -254,13 +313,17 @@ export class SyncClient {
       const outcome = this.confirmed.apply(op);
       touched.push(op);
       for (const conflict of outcome.conflicts) {
-        conflicts.push(toConflictRecord(conflict, this.familyId, op.seq));
+        const record = toConflictRecord(conflict, this.familyId, op.seq);
+        // A conflict the family already decided must not come back because the
+        // log was replayed after a cursor regression.
+        if (!this.isResolved(record.id)) conflicts.push(record);
       }
       // Our own work has arrived; the overlay entry for it is now redundant.
       this.pending.delete(op.opId);
     }
 
     await this.store.appendConfirmedOps(touched);
+    await this.store.dequeueOutbox(touched.map((op) => op.opId));
     await this.persistTouchedEntities(touched);
     if (conflicts.length > 0) await this.store.putConflicts(conflicts);
 

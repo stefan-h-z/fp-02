@@ -12,7 +12,13 @@
  */
 import { setMembers, type StoredEntity } from "./entity.js";
 import { plannedNeedKey, type PlannedNeed } from "./plan.js";
-import { computeRhythm, rankSuggestions, type Rhythm, type RhythmOptions } from "./rhythm.js";
+import {
+  computeRhythm,
+  rankSuggestions,
+  type AbsenceWindow,
+  type Rhythm,
+  type RhythmOptions,
+} from "./rhythm.js";
 import {
   EntityTypes,
   SetFields,
@@ -75,8 +81,8 @@ export interface BuildListOptions extends RhythmOptions {
   readonly suggestionLimit?: number;
   /** Suggestions are the learning feature; a family may switch it off (FR-1417). */
   readonly learningEnabled?: boolean;
-  /** Total time the family was away, which pauses every clock (FR-733). */
-  readonly pausedMs?: number;
+  /** When the family was away, which pauses the clocks (FR-733). */
+  readonly absences?: readonly AbsenceWindow[];
 }
 
 export function buildShoppingList(state: FamilyState, options: BuildListOptions): ShoppingListView {
@@ -103,6 +109,8 @@ export function buildShoppingList(state: FamilyState, options: BuildListOptions)
 }
 
 function manualLines(state: FamilyState, options: BuildListOptions): readonly ListLine[] {
+  const needsByItem = new Map((options.plannedNeeds ?? []).map((need) => [need.itemKey, need]));
+
   return state
     .all(EntityTypes.shoppingItem)
     .filter((item) => readOptionalString(item, "listId") === options.listId)
@@ -112,20 +120,25 @@ function manualLines(state: FamilyState, options: BuildListOptions): readonly Li
       const catalog = state.get(EntityTypes.catalogItem, itemKey);
       const amount = readOptionalNumber(item, "amount");
 
+      // Somebody jotting "milk" down before the week was planned must not hide
+      // the litre and a half the plan needs, nor the answer to "why is this on
+      // my list?" (SC-004).
+      const planned = needsByItem.get(itemKey);
+
       return {
         id: item.id,
         itemKey,
         name,
         quantityLabel:
           amount === undefined
-            ? ""
+            ? (planned?.quantityLabel ?? "")
             : formatQuantity(normalizeQuantity({ amount, unit: readString(item, "unit") })),
         note: readString(item, "note"),
         checked: readBoolean(item, "checked"),
         productGroup: readOptionalString(item, "productGroup") ?? productGroupOf(catalog),
         stores: storesOf(catalog),
         origin: "manual" as const,
-        plannedFrom: [],
+        plannedFrom: planned?.fromRecipeTitles ?? [],
         awaitingApproval: readBoolean(item, "wish") && !readBoolean(item, "approved"),
         openQuestion: readOptionalString(item, "question"),
       };
@@ -181,7 +194,10 @@ function catalogRhythms(
   options: BuildListOptions,
   lines: readonly ListLine[],
 ): readonly Rhythm[] {
-  const onList = new Set(lines.filter((line) => !line.checked).map((line) => line.itemKey));
+  // Everything on the list counts, ticked or not: suggesting an item that is
+  // sitting checked off two rows further down is exactly the resurrection noise
+  // FR-742 rules out.
+  const onList = new Set(lines.map((line) => line.itemKey));
 
   return state
     .all(EntityTypes.catalogItem)
@@ -193,7 +209,7 @@ function catalogRhythms(
           purchases: readTimestampSet(catalog, SetFields.purchases),
           emptyReports: readTimestampSet(catalog, SetFields.emptyReports),
           dismissals: readTimestampSet(catalog, SetFields.dismissals),
-          ...(options.pausedMs === undefined ? {} : { pausedMs: options.pausedMs }),
+          ...(options.absences === undefined ? {} : { absences: options.absences }),
         },
         options,
       ),

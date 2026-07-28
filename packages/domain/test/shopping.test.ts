@@ -286,3 +286,53 @@ describe("list sections (SPEC §10.2 presentation)", () => {
     expect(view.probablyDue).toHaveLength(0);
   });
 });
+
+describe("projection regressions from the review", () => {
+  it("keeps the planned amount and its provenance on a line somebody jotted down first", () => {
+    seedRecipe(state, "r-a", "Porridge", 2, [{ name: "Milk", amount: 500, unit: "ml" }]);
+    seedRecipe(state, "r-b", "Sauce", 2, [{ name: "milk", amount: 700, unit: "ml" }]);
+    seedMealSlot(state, "slot-a", "r-a", ["p-mum", "p-dad"]);
+    seedMealSlot(state, "slot-b", "r-b", ["p-mum", "p-dad"]);
+    addManualItem(state, "item-milk", "Milk");
+
+    const line = buildShoppingList(state, {
+      listId: LIST,
+      now: NOW,
+      plannedNeeds: derivePlannedNeeds(state, "week-1"),
+    })
+      .groups.flatMap((g) => g.lines)
+      .find((l) => l.itemKey === "milk");
+
+    expect(line?.quantityLabel).toBe("1.2 l");
+    expect(line?.plannedFrom).toEqual(["Porridge", "Sauce"]);
+  });
+
+  it("keeps both amounts when they cannot be added, instead of dropping one", () => {
+    seedRecipe(state, "r-a", "A", 1, [{ name: "Onion", amount: 3, unit: "piece" }]);
+    seedRecipe(state, "r-b", "B", 1, [{ name: "onion", amount: 50, unit: "g" }]);
+    seedMealSlot(state, "slot-a", "r-a", ["p-mum"]);
+    seedMealSlot(state, "slot-b", "r-b", ["p-mum"]);
+
+    const label = derivePlannedNeeds(state, "week-1")[0]?.quantityLabel;
+
+    expect(label).toContain("3×");
+    expect(label).toContain("50 g");
+  });
+
+  it("does not suggest an item that is already ticked off on the same screen (FR-742)", () => {
+    state.apply(op("entity.create", EntityTypes.catalogItem, "coffee", { productGroup: "drinks" }));
+    for (const weeksAgo of [4, 3, 2, 1]) {
+      state.apply(
+        op("set.add", EntityTypes.catalogItem, "coffee", {
+          field: "purchases",
+          member: String(NOW - weeksAgo * 7 * DAY_MS),
+        }),
+      );
+    }
+    addManualItem(state, "item-coffee", "Coffee", { checked: true });
+
+    const view = buildShoppingList(state, { listId: LIST, now: NOW });
+
+    expect(view.probablyDue.map((r) => r.itemKey)).not.toContain("coffee");
+  });
+});

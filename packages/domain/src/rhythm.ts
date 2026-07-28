@@ -17,6 +17,12 @@ export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type RhythmState = "unknown" | "quiet" | "due-soon" | "due" | "overdue";
 
+/** A stretch of time during which the household consumed nothing. */
+export interface AbsenceWindow {
+  readonly from: number;
+  readonly to: number;
+}
+
 /** Everything the engine is allowed to know about an item. */
 export interface ItemSignals {
   readonly itemKey: string;
@@ -26,8 +32,12 @@ export interface ItemSignals {
   readonly emptyReports?: readonly number[];
   /** Dismissed suggestions since the last purchase (FR-738, FR-742). */
   readonly dismissals?: readonly number[];
-  /** Milliseconds the family was away, which consumes nothing (FR-733). */
-  readonly pausedMs?: number;
+  /**
+   * When the family was away. Windows rather than a total, because only the
+   * part of an absence that falls after this item was last bought consumed
+   * nothing — a holiday before the purchase is already accounted for (FR-733).
+   */
+  readonly absences?: readonly AbsenceWindow[];
 }
 
 export interface RhythmOptions {
@@ -91,13 +101,18 @@ export function computeRhythm(signals: ItemSignals, options: RhythmOptions): Rhy
   const confidence = intervalConfidence(intervals);
   const dismissals = countAfter(signals.dismissals ?? [], lastPurchase);
   const stretch = 1 + Math.min(dismissals * DISMISSAL_STRETCH, MAX_DISMISSAL_STRETCH);
-  const effectiveIntervalMs = median * DAY_MS * stretch + (signals.pausedMs ?? 0);
-  const predictedDueAt = lastPurchase === undefined ? undefined : lastPurchase + effectiveIntervalMs;
+  const effectiveIntervalMs = median * DAY_MS * stretch;
 
-  const elapsedRatio =
-    predictedDueAt === undefined || lastPurchase === undefined
-      ? 0
-      : (options.now - lastPurchase) / effectiveIntervalMs;
+  // Absence pauses the clock rather than stretching the interval: a fortnight
+  // away means a fortnight nothing was used, not that the family now gets
+  // through milk more slowly forever (FR-733).
+  const pausedMs =
+    lastPurchase === undefined ? 0 : pausedBetween(signals.absences ?? [], lastPurchase, options.now);
+  const elapsedMs =
+    lastPurchase === undefined ? 0 : Math.max(0, options.now - lastPurchase - pausedMs);
+  const predictedDueAt = lastPurchase === undefined ? undefined : lastPurchase + effectiveIntervalMs + pausedMs;
+
+  const elapsedRatio = lastPurchase === undefined ? 0 : elapsedMs / effectiveIntervalMs;
 
   const state = reported
     ? "due"
@@ -190,12 +205,24 @@ function intervalDaysBetween(purchases: readonly number[]): readonly number[] {
   return out;
 }
 
-/** Median, not mean: one bulk purchase must not distort the rhythm (FR-731). */
+/**
+ * Median, not mean: one bulk purchase must not distort the rhythm (FR-731).
+ *
+ * Floored well above zero, because rounding a handful of same-day purchases to a
+ * zero-day interval would make every downstream ratio infinite — and a "buy this
+ * every zero days" claim is nonsense a person would rightly stop trusting.
+ */
+const MIN_INTERVAL_DAYS = 0.5;
+
 function medianOf(values: readonly number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 1) return round1(sorted[middle] ?? 0);
-  return round1(((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2);
+  const median =
+    sorted.length % 2 === 1
+      ? (sorted[middle] ?? 0)
+      : ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2;
+
+  return Math.max(MIN_INTERVAL_DAYS, round1(median));
 }
 
 /**
@@ -207,10 +234,28 @@ function intervalConfidence(intervals: readonly number[]): number {
   if (intervals.length < 2) return 0.2;
   const median = medianOf(intervals);
   if (median <= 0) return 0;
-  const deviations = intervals.map((i) => Math.abs(i - median) / median);
-  const meanDeviation = deviations.reduce((a, b) => a + b, 0) / deviations.length;
+
+  // Median deviation, not mean: the same reason the interval itself uses a
+  // median (FR-731). One stock-up gap among weekly purchases must not make a
+  // perfectly regular item look unpredictable — under a mean the single outlier
+  // dominated and drove confidence to zero.
+  const deviations = intervals.map((i) => Math.abs(i - median) / median).sort((a, b) => a - b);
+  const middle = Math.floor(deviations.length / 2);
+  const typicalDeviation =
+    deviations.length % 2 === 1
+      ? (deviations[middle] ?? 0)
+      : ((deviations[middle - 1] ?? 0) + (deviations[middle] ?? 0)) / 2;
+
   const sampleBonus = Math.min(intervals.length / 8, 1);
-  return round2(Math.max(0, Math.min(1, (1 - meanDeviation) * (0.6 + 0.4 * sampleBonus))));
+  return round2(Math.max(0, Math.min(1, (1 - typicalDeviation) * (0.6 + 0.4 * sampleBonus))));
+}
+
+/** How much of the window since the last purchase the family was away for. */
+function pausedBetween(absences: readonly AbsenceWindow[], from: number, to: number): number {
+  return absences.reduce((total, absence) => {
+    const overlap = Math.min(absence.to, to) - Math.max(absence.from, from);
+    return total + Math.max(0, overlap);
+  }, 0);
 }
 
 function countAfter(timestamps: readonly number[], after: number | undefined): number {

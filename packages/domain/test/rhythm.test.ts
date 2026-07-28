@@ -87,9 +87,59 @@ describe("staples engine — due states", () => {
   });
 
   it("pauses the clock while the family is away, so a holiday consumes nothing (FR-733)", () => {
-    const rhythm = weekly("milk", 14, { pausedMs: 8 * DAY_MS });
+    const rhythm = weekly("milk", 14, { absences: [{ from: daysAgo(10), to: daysAgo(2) }] });
 
     expect(rhythm.state).not.toBe("overdue");
+  });
+
+  it("subtracts the absence from time consumed rather than stretching the rhythm", () => {
+    // Bought 40 days ago, away for 28 of them: 12 days of real consumption on a
+    // 7-day rhythm, which is well past due, not merely due.
+    const rhythm = weekly("milk", 40, { absences: [{ from: daysAgo(35), to: daysAgo(7) }] });
+
+    expect(rhythm.state).toBe("overdue");
+    expect(rhythm.overdueRatio).toBeGreaterThan(0.5);
+  });
+
+  it("does not silence an item bought after the family came home", () => {
+    const rhythm = weekly("milk", 8, { absences: [{ from: daysAgo(60), to: daysAgo(32) }] });
+
+    expect(rhythm.state).toBe("due");
+  });
+});
+
+describe("staples engine — degenerate data", () => {
+  it("never produces an infinite or NaN ratio from same-hour check-offs", () => {
+    const rhythm = computeRhythm(
+      {
+        itemKey: "milk",
+        purchases: [NOW - 3 * 60 * 60 * 1000, NOW - 2 * 60 * 60 * 1000, NOW - 60 * 60 * 1000],
+      },
+      { now: NOW },
+    );
+
+    expect(Number.isFinite(rhythm.overdueRatio)).toBe(true);
+    expect(rhythm.intervalDays).toBeGreaterThan(0);
+  });
+
+  it("stays finite when nothing has elapsed since the last purchase", () => {
+    const rhythm = computeRhythm(
+      { itemKey: "milk", purchases: [NOW - 120_000, NOW - 60_000, NOW] },
+      { now: NOW },
+    );
+
+    expect(Number.isNaN(rhythm.overdueRatio)).toBe(false);
+  });
+
+  it("keeps confidence in a weekly item that was once stocked up on (FR-731)", () => {
+    // The same purchases the median test uses: four weekly gaps and one long one.
+    const rhythm = computeRhythm(
+      { itemKey: "coffee", purchases: [daysAgo(88), daysAgo(81), daysAgo(74), daysAgo(67), daysAgo(7)] },
+      { now: NOW },
+    );
+
+    expect(rhythm.intervalDays).toBe(7);
+    expect(rhythm.confidence).toBeGreaterThan(0.4);
   });
 });
 

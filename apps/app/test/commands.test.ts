@@ -201,7 +201,11 @@ describe("reporting and suggestions (SPEC §10.2)", () => {
 
     // A holiday consumes nothing, so an item is not treated as overdue.
     const rhythm = computeRhythm(
-      { itemKey: "milk", purchases: [NOW - 28 * DAY_MS, NOW - 21 * DAY_MS, NOW - 14 * DAY_MS], pausedMs: 8 * DAY_MS },
+      {
+        itemKey: "milk",
+        purchases: [NOW - 28 * DAY_MS, NOW - 21 * DAY_MS, NOW - 14 * DAY_MS],
+        absences: [{ from: NOW - 10 * DAY_MS, to: NOW - 2 * DAY_MS }],
+      },
       { now: NOW },
     );
     expect(rhythm.state).not.toBe("overdue");

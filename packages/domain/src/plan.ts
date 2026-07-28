@@ -83,6 +83,8 @@ export function derivePlannedNeeds(state: FamilyState, weekPlanId: string): read
     itemKey: string;
     displayName: string;
     quantity: NormalizedQuantity | undefined;
+    /** Amounts in a dimension that cannot be added to the first one. */
+    others: NormalizedQuantity[];
     slots: Set<string>;
     recipes: Set<string>;
   }>();
@@ -110,6 +112,7 @@ export function derivePlannedNeeds(state: FamilyState, weekPlanId: string): read
           itemKey,
           displayName: ingredient.name.trim(),
           quantity: scaled,
+          others: [],
           slots: new Set([slot.id]),
           recipes: new Set(recipeTitle.length > 0 ? [recipeTitle] : []),
         });
@@ -118,7 +121,20 @@ export function derivePlannedNeeds(state: FamilyState, weekPlanId: string): read
 
       existing.slots.add(slot.id);
       if (recipeTitle.length > 0) existing.recipes.add(recipeTitle);
-      existing.quantity = combine(existing.quantity, scaled);
+
+      if (existing.quantity === undefined || scaled === undefined) {
+        existing.quantity = existing.quantity ?? scaled;
+      } else {
+        const sum = addQuantities(existing.quantity, scaled);
+        if (sum === undefined) {
+          // Three onions and 50 g of onion cannot be added. Keeping only the
+          // numerically larger would silently drop a requirement — and grams
+          // always outnumber pieces, so it would usually drop the wrong one.
+          existing.others.push(scaled);
+        } else {
+          existing.quantity = sum;
+        }
+      }
     }
   }
 
@@ -128,20 +144,14 @@ export function derivePlannedNeeds(state: FamilyState, weekPlanId: string): read
       itemKey: entry.itemKey,
       displayName: entry.displayName,
       quantity: entry.quantity,
-      quantityLabel: entry.quantity === undefined ? "" : formatQuantity(entry.quantity),
+      quantityLabel: [entry.quantity, ...entry.others]
+        .filter((quantity): quantity is NormalizedQuantity => quantity !== undefined)
+        .map(formatQuantity)
+        .join(" + "),
       fromMealSlotIds: [...entry.slots].sort(),
       fromRecipeTitles: [...entry.recipes].sort(),
     }))
     .sort((a, b) => (a.itemKey < b.itemKey ? -1 : a.itemKey > b.itemKey ? 1 : 0));
-}
-
-function combine(
-  a: NormalizedQuantity | undefined,
-  b: NormalizedQuantity | undefined,
-): NormalizedQuantity | undefined {
-  if (a === undefined) return b;
-  if (b === undefined) return a;
-  return addQuantities(a, b) ?? (a.canonicalAmount >= b.canonicalAmount ? a : b);
 }
 
 export function plannedNeedKey(weekPlanId: string, itemKey: string): string {

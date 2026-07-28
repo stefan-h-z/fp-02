@@ -47,6 +47,19 @@ export class HlcClock {
     this.now = options.now ?? (() => Date.now());
   }
 
+  /** Where the clock stands, so it can be persisted across a restart. */
+  snapshot(): Hlc {
+    return { wall: this.wall, counter: this.counter };
+  }
+
+  /** Restore a persisted position. Never moves the clock backwards. */
+  restore(state: Hlc): void {
+    if (state.wall > this.wall || (state.wall === this.wall && state.counter > this.counter)) {
+      this.wall = state.wall;
+      this.counter = state.counter;
+    }
+  }
+
   /** Stamp a locally created operation. */
   next(): HlcStamp {
     const physical = this.now();
