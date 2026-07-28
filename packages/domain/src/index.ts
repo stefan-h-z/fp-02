@@ -31,3 +31,5 @@ export * from "./scheduling.js";
 export * from "./legal.js";
 export * from "./health.js";
 export * from "./people.js";
+export * from "./mealPlanning.js";
+export * from "./timetable.js";

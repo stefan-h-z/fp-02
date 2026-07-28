@@ -206,6 +206,17 @@ that `IndexedDbStateStore` implements the seam directly instead of reusing
 driver stays in the tree behind the same interface should the SQL route ever be
 worth the worker.
 
+**The design system's theme colours are not in the web export.** Dark mode is
+wired and verified — the browser suite emulates a dark device and asserts the
+tree comes out marked `t_dark` — but the CSS custom properties behind those
+classes (`--t-color` and friends) come out empty from `expo export`, so both
+themes currently paint the same colours. Tamagui normally emits that CSS from a
+compiler plugin the Metro export does not run. It is a packaging question about
+how `@cp/ui` is consumed on web rather than anything in this app, and it is why
+the browser test asserts the theme class rather than a rendered colour: the
+assertion should fail when *this* code breaks, not when the design system's
+build does.
+
 **The design system is consumed through a link** to a checkout beside this
 repository, which installs locally but not in CI — hence the split CI, whose
 `app` job is non-blocking until the packages are published.

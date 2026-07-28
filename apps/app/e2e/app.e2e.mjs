@@ -175,6 +175,49 @@ await step("the browser really persisted something", async () => {
   );
 });
 
+/**
+ * FR-1211. The app follows the device rather than offering a switch of its own,
+ * so the only honest way to test it is to change the device — `emulateMedia`.
+ *
+ * The assertion is the theme *class*, not the rendered colour, and that is a
+ * deliberate limit rather than a weaker test. Tamagui marks the tree `t_dark`
+ * when the dark theme is active, which is exactly what this app controls. The
+ * colour values behind those classes are not in the static export — the design
+ * system's CSS custom properties come out empty (`--t-color`), so both themes
+ * currently paint the same. That is a packaging gap in how `@cp/ui` is consumed
+ * on web, recorded in docs/status.md; asserting colours here would fail for a
+ * reason this code cannot fix and would hide the thing it can.
+ */
+await step("dark mode follows the device", async () => {
+  const themeClasses = async () =>
+    page.evaluate(() => {
+      const found = new Set();
+      for (const el of Array.from(document.querySelectorAll("*")).slice(0, 300)) {
+        for (const name of Array.from(el.classList)) if (/^t_(light|dark)$/.test(name)) found.add(name);
+      }
+      return [...found].sort().join(",");
+    });
+
+  const settle = async () => {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => (document.body.innerText ?? "").trim().length > 0, undefined, {
+      timeout: 30_000,
+    });
+  };
+
+  await page.emulateMedia({ colorScheme: "light" });
+  await settle();
+  const light = await themeClasses();
+
+  await page.emulateMedia({ colorScheme: "dark" });
+  await settle();
+  const dark = await themeClasses();
+
+  assert(!light.includes("t_dark"), `a light device rendered the dark theme: ${light}`);
+  assert(dark.includes("t_dark"), `a dark device did not render the dark theme: ${dark}`);
+  await page.emulateMedia({ colorScheme: "light" });
+});
+
 await step("no console errors along the way", async () => {
   assert(problems.length === 0, problems.join("\n    "));
 });
