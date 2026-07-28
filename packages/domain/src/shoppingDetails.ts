@@ -68,7 +68,7 @@ export function detailSummary(details: ItemDetails): string {
 
 export type CaptureMethod = "typed" | "voice" | "barcode" | "photo";
 
-export interface CapturedItem {
+export interface CapturedShoppingItem {
   readonly name: string;
   readonly method: CaptureMethod;
   /** Set only by barcode, and kept so the same packet is recognised next time. */
@@ -106,7 +106,7 @@ export function resolveBarcode(state: FamilyState, barcode: string): string | un
 export function capture(
   state: FamilyState,
   input: { readonly method: CaptureMethod; readonly text?: string; readonly barcode?: string; readonly photoUrl?: string },
-): CapturedItem | undefined {
+): CapturedShoppingItem | undefined {
   if (input.method === "barcode") {
     const code = (input.barcode ?? "").trim();
     if (code.length === 0) return undefined;
