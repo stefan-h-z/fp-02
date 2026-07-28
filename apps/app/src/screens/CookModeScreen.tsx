@@ -11,6 +11,7 @@
  * note at the end is about the recipe and therefore shared (FR-536).
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useKeepAwake } from "expo-keep-awake";
 import { Button, Card, EmptyState, List, Progress, Text, Textarea } from "@cp/ui";
 import { noteAfterCooking } from "../commands.js";
 import { describeTimers, selectCookMode, type CookTimer } from "../selectors.js";
@@ -44,11 +45,12 @@ export function CookModeScreen(props: CookModeScreenProps): ReactNode {
     [state, props.recipeId, props.eaters],
   );
 
-  // TODO(platform): FR-527 wants the display kept permanently on for the whole
-  // of cook mode. That is `expo-keep-awake` (`useKeepAwake()`), which is a
-  // native module and a new dependency on the app package — it cannot be done
-  // from the design system or the domain, so it is left as an explicit gap
-  // rather than faked with a no-op.
+  // FR-527: the display stays on for as long as this screen is mounted, and
+  // goes back to the device's own setting the moment it unmounts. Cooking is
+  // the one place in the product where the person's hands are wet or full, so
+  // a screen that dims after thirty seconds costs them the step they were on.
+  // The hook is a no-op on the web, where the platform gives no such control.
+  useKeepAwake();
 
   // One interval for every timer: the countdown is a rendering concern, so it
   // ticks the clock rather than the timers themselves (FR-529).

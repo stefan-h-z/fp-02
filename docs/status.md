@@ -100,8 +100,10 @@ no training on family data and no retention of voice uploads (AI-02, AI-03,
 OBL-07 — `config/family.php` states this where an operator will see it), OAuth
 client registrations for Google and Microsoft, and an inbound-mail provider.
 
-**Two things need a native capability**: home-screen widgets and keeping the
-display awake in cook mode. Both are named TODOs rather than stubs.
+**One thing needs a native capability**: home-screen widgets, which need a
+platform extension target rather than a dependency. Cook mode no longer belongs
+on this list — `expo-keep-awake` holds the display on for as long as that screen
+is mounted (FR-527), and releases it on unmount.
 
 **The screens now render under test, thinly.** The earlier note here was right
 about the cause — React Native's Flow syntax needs a Babel transform Vitest does
@@ -120,10 +122,32 @@ the whole of a child's routine rendered as placeholders. `icons.ts` now wraps
 each glyph in a plain function, and `render-test/icons.test.tsx` fails without
 that wrapper.
 
-Coverage is honestly thin: seven tests over the shopping list, the conflict
-screen and icon registration. The remaining screens are still only proven to
-typecheck and bundle. The harness is the part that was hard; adding cases to it
-is now ordinary work.
+It then earned its place a second time, and more seriously. `repaint.test.tsx`
+asks the question the rest of the suite could not — does the person *see* the
+change — and the answer was no: `SyncClient.mutate` applied operations to the
+state object screens were already holding, so `useSyncExternalStore` compared
+snapshots by identity, found them equal, and skipped every re-render. Adding an
+item showed nothing; ticking a routine step left the progress at zero. It came
+right only when a pull replaced the state wholesale, so on a connection it read
+as lag and offline as a dead app — in the product's most frequent interaction
+(FR-731). `mutate` now applies onto a clone and swaps the reference, and both
+`repaint.test.tsx` and two new cases in `packages/sync/test/robustness.test.ts`
+fail without it.
+
+Coverage is now 28 tests across all ten screens: the shopping list, conflicts,
+icon registration, the week plan, cook mode, the routine, protocols, today, my
+day, settings and join. They assert what a person sees and what a tap reaches —
+scaling a recipe to eight eaters, a note taken at the hob, a dose
+acknowledgement landing in the family's state, mum's focus view not showing
+dad's afternoon, erasure refusing to run on a single tap, and no password field
+anywhere in the join flow.
+
+One product edge is documented by `care.test.tsx` rather than fixed: a routine
+step writes the whole `subtasks` array as the array *render* saw, so two taps
+inside one frame would have the second undo the first. A child taps, sees the
+tick, then taps again, so the repaint in between is what makes the sequence
+safe — which is true of the product and now written down where it will be
+found.
 
 **The web build persists through IndexedDB, not wa-sqlite.** This is the
 fallback PLAN §3.3 named for WP-0.7, and it was taken on the merits rather than
