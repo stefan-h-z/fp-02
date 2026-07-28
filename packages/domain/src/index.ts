@@ -29,3 +29,4 @@ export * from "./recipeImport.js";
 export * from "./search.js";
 export * from "./scheduling.js";
 export * from "./legal.js";
+export * from "./health.js";
