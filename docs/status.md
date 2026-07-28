@@ -95,6 +95,13 @@ implemented and tested here.
 **Two things need a native capability**: home-screen widgets and keeping the
 display awake in cook mode. Both are named TODOs rather than stubs.
 
+**The screens are not render-tested.** Attempted and abandoned deliberately:
+rendering React Native components under Vitest needs React Native's Flow syntax
+put through a Babel transform, which an alias to `react-native-web` does not
+achieve — it is a jest-preset-shaped problem, not a config line. The screens do
+typecheck against the design system's real prop types, and `expo export` proves
+they bundle. A proper render harness is a follow-up worth doing.
+
 **The web build does not persist yet.** wa-sqlite on OPFS needs a SharedWorker
 to enforce a single writer across tabs; until that is wired the browser runs in
 memory, which is stated in `apps/app/src/storage.ts` rather than hidden.
