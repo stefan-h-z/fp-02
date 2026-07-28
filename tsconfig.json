@@ -4,7 +4,9 @@
     "packages/*/src/**/*.ts",
     "packages/*/test/**/*.ts",
     "apps/*/src/**/*.ts",
+    "apps/*/src/**/*.tsx",
     "apps/*/test/**/*.ts",
+    "apps/*/test/**/*.tsx",
     "e2e/**/*.ts"
   ],
   "exclude": [

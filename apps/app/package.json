@@ -9,6 +9,19 @@
     "@fam/domain": "workspace:*",
     "@fam/i18n": "workspace:*",
     "@fam/storage": "workspace:*",
-    "@fam/sync": "workspace:*"
+    "@fam/sync": "workspace:*",
+    "@cp/ui": "link:../../../cp-testt1-09/packages/ui",
+    "@cp/tokens": "link:../../../cp-testt1-09/packages/tokens",
+    "@tamagui/core": "^1.118.0",
+    "react": "^18.3.1",
+    "react-native": "0.76.5",
+    "expo": "~52.0.0",
+    "expo-router": "~4.0.0",
+    "expo-sqlite": "~15.0.0",
+    "react-native-web": "^0.19.12",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0"
   }
 }
