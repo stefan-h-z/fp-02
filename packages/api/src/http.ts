@@ -26,6 +26,13 @@ export interface HttpTransportOptions {
   readonly baseUrl: string;
   /** Long-lived device token (SPEC FR-112). */
   readonly token: () => string | undefined;
+  /**
+   * The OAuth client this build is. A device token is this module's own
+   * credential, not a platform access token, so the platform cannot read the
+   * app off it and resolves the app from this header instead — without it every
+   * sync call answers `app_context_missing`.
+   */
+  readonly clientId?: string;
   readonly fetchImpl?: typeof fetch;
   /** Injected so tests do not sleep. */
   readonly onUnauthorized?: () => void;
@@ -53,34 +60,67 @@ export class HttpSyncTransport implements SyncTransport {
 
   constructor(private readonly options: HttpTransportOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, "");
-    this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
+    // Bound to the global, not merely referenced. A browser's `fetch` throws
+    // "Illegal invocation" when called with any other `this`, and storing it on
+    // an instance and calling `this.fetchImpl(...)` does exactly that. Node's
+    // fetch does not care, so every test passes and only a browser breaks — the
+    // web build could not reach the backend at all until this was bound.
+    this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
   }
 
   async push(request: PushRequest): Promise<PushResponse> {
     return this.post<PushResponse>("/api/v1/family/sync/push", request);
   }
 
+  /**
+   * Reads are GET, writes are POST — which is what the server's routes declare
+   * and, less incidentally, what lets a pull be retried or cached without a
+   * proxy having to guess whether it is safe.
+   */
   async pull(request: PullRequest): Promise<PullResponse> {
-    return this.post<PullResponse>("/api/v1/family/sync/pull", request);
+    return this.get<PullResponse>("/api/v1/family/sync/pull", {
+      familyId: request.familyId,
+      deviceId: request.deviceId,
+      cursor: String(request.cursor),
+      ...(request.limit === undefined ? {} : { limit: String(request.limit) }),
+    });
   }
 
   async snapshot(request: SnapshotRequest): Promise<SnapshotResponse> {
-    return this.post<SnapshotResponse>("/api/v1/family/sync/snapshot", request);
+    return this.get<SnapshotResponse>("/api/v1/family/sync/snapshot", {
+      familyId: request.familyId,
+      deviceId: request.deviceId,
+    });
   }
 
-  private async post<T>(path: string, body: unknown): Promise<T> {
+  private post<T>(path: string, body: unknown): Promise<T> {
+    return this.send<T>("POST", path, body);
+  }
+
+  private get<T>(path: string, query: Record<string, string>): Promise<T> {
+    return this.send<T>("GET", path + "?" + new URLSearchParams(query).toString());
+  }
+
+  private async send<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
     const token = this.options.token();
     let response: Response;
 
     try {
       response = await this.fetchImpl(this.baseUrl + path, {
-        method: "POST",
+        method,
         headers: {
-          "content-type": "application/json",
           accept: "application/json",
-          ...(token === undefined ? {} : { authorization: "Bearer " + token }),
+          ...(body === undefined ? {} : { "content-type": "application/json" }),
+          ...(this.options.clientId === undefined
+            ? {}
+            : { "x-client-id": this.options.clientId }),
+          // Its own header rather than `Authorization: Bearer`. A device token
+          // is this module's credential, not one of the platform's OAuth
+          // tokens, and putting it where the platform's guard looks would have
+          // that guard try to resolve it as a user and fail.
+          ...(token === undefined ? {} : { "x-family-device-token": token }),
         },
-        body: JSON.stringify(body),
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
     } catch {
       // Being offline is the normal case, not an error worth decorating.
@@ -95,7 +135,10 @@ export class HttpSyncTransport implements SyncTransport {
       throw new SyncHttpError(response.status, path, "request failed");
     }
 
-    return (await response.json()) as T;
+    // The platform wraps every response in `data`; the sync protocol is defined
+    // flat. Unwrapping here keeps that envelope out of the engine.
+    const payload = (await response.json()) as { readonly data?: T };
+    return payload.data ?? (payload as T);
   }
 }
 

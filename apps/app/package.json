@@ -48,6 +48,7 @@
     "start": "expo start",
     "web": "expo start --web",
     "export:web": "expo export --platform web",
-    "test:render": "jest --config jest.config.cjs"
+    "test:render": "jest --config jest.config.cjs",
+    "test:e2e": "node e2e/run.mjs"
   }
 }

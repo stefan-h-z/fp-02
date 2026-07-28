@@ -200,13 +200,13 @@ function CreateFamily(props: StepProps): ReactNode {
  */
 function Recover(props: StepProps): ReactNode {
   const t = useTranslator();
-  const [familyId, setFamilyId] = useState("");
   const [code, setCode] = useState("");
 
+  // No family id is asked for: the code identifies the family on its own, and a
+  // person whose phone is gone does not have an opaque id to hand.
   const redeem = () =>
     void props.attempt(async () => {
       const result = await props.auth.redeemRecoveryCode({
-        familyId: familyId.trim(),
         recoveryCode: code.trim(),
         deviceName: deviceName(),
       });
@@ -219,7 +219,6 @@ function Recover(props: StepProps): ReactNode {
       <Alert variant="info" label={t.t("join.recoverHint")} />
       {props.error === undefined ? null : <Alert variant="error" label={props.error} />}
 
-      <Input value={familyId} onValueChange={setFamilyId} placeholder={t.t("join.familyId")} testID="recover-family" />
       <Input value={code} onValueChange={setCode} placeholder={t.t("join.recoveryCode")} testID="recover-code" />
 
       <Button

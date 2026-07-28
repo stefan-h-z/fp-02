@@ -21,5 +21,14 @@ export default tseslint.config(
       "@typescript-eslint/consistent-type-imports": "error",
       "no-console": ["error", { allow: ["warn", "error"] }]
     }
+  },
+  {
+    // Last, because flat config resolves in order and the block above would
+    // otherwise win. The browser harness is a command-line tool whose output
+    // *is* its product: which step passed, which backend call the app made,
+    // what the screen said when something failed. `console.log` is the
+    // interface here, not a leftover debug statement.
+    files: ["apps/*/e2e/**/*.mjs"],
+    rules: { "no-console": "off" },
   }
 );

@@ -11,3 +11,6 @@ web-build/
 
 # Scratch files from review passes — never part of the suite.
 **/__review.test.ts
+
+# Screenshots from a browser run: evidence for the person watching, not source.
+apps/*/e2e/.artifacts/

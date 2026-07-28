@@ -32,6 +32,14 @@ type TamaguiProviderConfig = NonNullable<ComponentProps<typeof TamaguiProvider>[
  */
 const API_BASE_URL = process.env["EXPO_PUBLIC_API_URL"] ?? "http://localhost:8000";
 
+// Which OAuth client this build is. The platform reads the app off the access
+// token's client, but a family device holds this module's own token rather than
+// a platform one — so without this header every family endpoint answers
+// `app_context_missing`, including sync. It is per-deployment configuration,
+// not a secret: a public client id identifies the app, it does not authorise
+// anything on its own.
+const API_CLIENT_ID = process.env["EXPO_PUBLIC_CLIENT_ID"];
+
 // Glyphs must be registered before anything renders, or the first paint shows
 // placeholders (see src/icons.ts).
 registerAppIcons();
@@ -45,7 +53,13 @@ export default function RootLayout(): ReactNode {
   const [ready, setReady] = useState<Ready | undefined>(undefined);
   const [actorId, setActorId] = useState<string | null>(null);
   const [recoveryCode, setRecoveryCode] = useState<string | undefined>(undefined);
-  const [auth] = useState(() => new AuthClient({ baseUrl: API_BASE_URL }));
+  const [auth] = useState(
+    () =>
+      new AuthClient({
+        baseUrl: API_BASE_URL,
+        ...(API_CLIENT_ID === undefined ? {} : { clientId: API_CLIENT_ID }),
+      }),
+  );
 
   const clientFor = useCallback(
     (store: StateStore, session: DeviceSession): SyncClient =>
@@ -53,7 +67,11 @@ export default function RootLayout(): ReactNode {
         familyId: session.familyId,
         deviceId: session.deviceId,
         store,
-        transport: new HttpSyncTransport({ baseUrl: API_BASE_URL, token: () => session.token }),
+        transport: new HttpSyncTransport({
+          baseUrl: API_BASE_URL,
+          token: () => session.token,
+          ...(API_CLIENT_ID === undefined ? {} : { clientId: API_CLIENT_ID }),
+        }),
       }),
     [],
   );

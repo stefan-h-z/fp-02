@@ -88,7 +88,38 @@ defect a green suite hides.
 
 ## What genuinely remains
 
-**The backend has never run.** `composer install` cannot fetch package archives
+**The backend runs, in this container.** `composer install --prefer-source`
+installs it: the organisation's egress policy refuses GitHub's dist zipballs
+(403 on `api.github.com/.../zipball`), but git clone is allowed, and
+`composer config --global use-github-api false` keeps Composer off the API path
+it would otherwise insist on. One package, `phpstan/phpstan`, has no `source` in
+the lock at all and is therefore excluded with `--no-dev`; nothing else is.
+`php artisan migrate` created the schema, including both family migrations, and
+`php artisan serve` answers. Setup is written down in `docs/running-locally.md`.
+
+The Pest suite has still not been run — it is a dev dependency behind the same
+phpstan wall — so "runs" here means the routes, the migrations and the join and
+sync paths were exercised over HTTP, not that the module's own tests passed.
+
+**What running it found.** The two halves had been written against different
+contracts, and every one of these was invisible to a suite that mocks the
+server:
+
+| | client sent | server expects |
+|---|---|---|
+| app context | nothing | `X-Client-Id` on every request |
+| device token | `Authorization: Bearer` | `X-Family-Device-Token` |
+| create family | `familyName` | `name`, plus a platform token |
+| redeem invite | `inviteToken` | `token` |
+| redeem recovery | `familyId` + `recoveryCode` | `code` alone |
+| pull, snapshot | POST | GET |
+| every response | flat | wrapped in `data` |
+
+`invites/inspect` did not exist server-side at all, though FR-118 requires it —
+the joiner is shown the name and role the inviter chose. It is now implemented,
+and reading an invitation deliberately does not spend it.
+
+**The old note said the backend had never run.** `composer install` cannot fetch package archives
 in this environment, so every PHP file is unexecuted and its Pest tests will run
 for the first time in CI. `packages/sync/src/reference-server.ts` is the
 behaviour the sync half must reproduce, and the acceptance suite runs the real
