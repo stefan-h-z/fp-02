@@ -20,3 +20,7 @@ export * from "./notifications.js";
 export * from "./inbox.js";
 export * from "./compliance.js";
 export * from "./documents.js";
+export * from "./ics.js";
+export * from "./connector.js";
+export * from "./recipeImport.js";
+export * from "./search.js";
