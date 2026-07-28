@@ -79,5 +79,12 @@ breach process, and the deletion concept whose retention periods are already
 implemented in code (SPEC OBL-07: five years for histories, audio deleted at
 transcription).
 
-Have this reviewed professionally. The app processes special-category data about
-children, which is the strictest tier there is.
+Drafts derived from the implemented system are in `docs/legal/`: the record of
+processing activities, the impact assessment, and the deletion concept. They are
+written from what the code actually does, so they are a starting point rather
+than a template — but they are drafts.
+
+Have them reviewed professionally. The app processes special-category data about
+children, which is the strictest tier there is, and the impact assessment's
+conclusion — that prior consultation with the supervisory authority is not
+required — is precisely the judgement a lawyer should confirm.
