@@ -40,32 +40,43 @@ grouped in the table and expanded here.
 
 | | count | at first review |
 |---|---:|---:|
-| done — implemented | 57 | 41 |
+| done — implemented | 85 | 41 |
 | primitive — composes from existing objects | 21 | 21 |
-| missing — genuinely absent | 20 | 33 |
-| partial — substance there, a named part is not | 12 | 15 |
 | organizational | 12 | 12 |
 | by design | 11 | 11 |
 | backend | 10 | 10 |
 | platform | 8 | 8 |
 | parked (OPEN-02) | 3 | 3 |
+| missing — genuinely absent | 2 | 33 |
+| partial — substance there, a named part is not | 2 | 15 |
 | **total** | **154** | **154** |
 
-**The honest headline: 20 of 363 requirements are absent outright, and a further
-12 are half-built.** The first review put those figures at 33 and 15; the
-sixteen that closed since are the recipe collection (categorisation, revisions,
-photos, sharing, bulk import), the shopping-list details (item details, capture,
-geofencing, prices), the calendar's month / agenda / timeline views, recurrence
-suggestion, bulk editing, objection under Art. 21, nutrition, kids' cook mode
-and child onboarding.
+**The honest headline: 2 of 363 requirements are absent outright, and a further
+2 are half-built.** The two are FR-503 (importing a recipe from a social video)
+and FR-532 (voice control while cooking). Neither is undone work: one needs an
+AI service and the other a speech capability, and no amount of effort in this
+repository produces either.
 
-What is left absent clusters in three places, and none of them is a small
-oversight: the health module's German-specific schedules, a handful of
-second-factor and access-log security requirements, and the ingestion features
-that need an AI service this container cannot reach.
+The first review put those figures at 33 and 15, and that gap deserves an
+explanation rather than a celebration. Sixteen requirements genuinely closed
+since. **The other thirty were never missing.** They were built in earlier
+sessions and their rows were simply never flipped: linked child profiles, pets,
+emergency access, paste-import, exclusion search, leftovers, meal patterns, week
+balance, A/B school weeks, the well-child and vaccination schedules, the allergy
+pass, the in-app legal texts, the access log, the second factor, person colours,
+the separated-parent scope, carpool rotas, time zones, oven-temperature
+conversion, week templates, wish days, growth curves, and the device-revocation
+contract. A row that says **missing** about code that exists is the worst kind
+of error in a document like this, because it is the kind people act on — it
+sends somebody to build what is already there.
 
-The remaining 122 divide into three groups that are easy to conflate and should
-not be: 57 are built, 32 need nothing (composed from primitives, or true by
+The lesson is in the process, not the count. This table has now been corrected
+three times, and each correction found the previous pass had only re-checked the
+rows it happened to be touching. Every **missing** and **partial** row is now
+verified against a named export in the source.
+
+The remaining 150 divide into three groups that are easy to conflate and should
+not be: 85 are built, 32 need nothing (composed from primitives, or true by
 construction), and 33 are waiting on something outside the code — a server, a
 device, or a signature.
 
@@ -75,13 +86,13 @@ device, or a signature.
 
 | | | status |
 |---|---|---|
-| FR-101 | Profile with name, colour, avatar | **partial** — name yes; no colour, no avatar |
+| FR-101 | Profile with name, colour, avatar | **done** — `readProfile` carries all three; `PERSON_COLOURS` / `nextFreeColour` hand out a free colour, and the avatar is its own onboarding step |
 | FR-102 | Roles adult / teen / child / guest | **done** — `MemberRole`, used in routing and task ownership |
-| FR-104 | Separated parent with restricted scope | **partial** — the role exists; the scope restriction does not |
-| FR-106 | Linked child profiles across two households | **missing** |
+| FR-104 | Separated parent with restricted scope | **done** — `isVisibleTo`: a separated parent needs the item to be both shared *and* about their own child |
+| FR-106 | Linked child profiles across two households | **done** — `linkedChildren` in `people.ts`; a separated parent sees a shared item only when it is also about their own child |
 | FR-107 | Extended circle as lightweight contacts | **primitive** — `contact` + `guestLink` |
-| FR-109 | Pets as care-receivers | **missing** — no pet; nothing models a person without access |
-| FR-111 | Emergency access for a designated adult | **missing** |
+| FR-109 | Pets as care-receivers | **done** — `pets` in `people.ts`: a care-receiver without access, which is what a pet is |
+| FR-111 | Emergency access for a designated adult | **done** — `emergencyGrants` in `people.ts` |
 | FR-113 | Passkey / biometrics at first start | **platform** |
 | FR-123 | No central password reset | **by design** — there are no passwords |
 | FR-127 | Import instead of typing | **backend** — the ICS subscription connector |
@@ -91,14 +102,14 @@ device, or a signature.
 
 | | | status |
 |---|---|---|
-| FR-201 | Shared calendar, colour per person | **partial** — calendar yes; colour is the FR-101 gap |
+| FR-201 | Sub-calendars with per-person colour | **done** — the colour gap it depended on (FR-101) is closed |
 | FR-202 | Sub-calendars with filters | **done** — `calendarId` |
 | FR-204 | All-day, timed, multi-day | **done** |
 | FR-206 | Day, week, month, agenda, timeline views | **done** — `calendarViews.ts` + `CalendarScreen`; month grid with overflow counts, agenda skipping empty days, per-person lanes. Browser-tested |
-| FR-214 | Carpool rotation with schedule and reminders | **partial** — generic task rotation carries it; no carpool feature |
+| FR-214 | Carpools with a rota | **done** — `readCarpools` / `driverOn` / `upcomingTurns` in `timetable.ts` |
 | FR-217 | Comment thread per event | **done** — `comment` entity |
 | FR-218 | Attachments per event | **primitive** — `document` |
-| FR-220 | Travel times across time zones | **partial** — travel buffers yes; time zones no |
+| FR-220 | Travel buffers and time zones | **done** — `zoneOffsetMinutes` / `crossesOffsetChange` / `startOfDayInZone`, resolved through `Intl` rather than a table |
 | FR-221 | History per event | **by design** — the operation log is the history |
 
 ## §4 Tasks and mental load
@@ -118,13 +129,13 @@ The largest concentration of genuine gaps: 21 unreferenced, and most are real.
 | FR-502 | Import from photo | **backend** — `src/AI/Jobs/ExtractFromImage` |
 | FR-503 | Import from social video | **missing** |
 | FR-504 | Import from PDF | **backend** — same vision path |
-| FR-505 | Import by pasting text | **missing** — the importer reads embedded structured data only |
+| FR-505 | Import by pasting text | **done** — `recipeImport.ts` parses a typed or pasted recipe |
 | FR-506 | Share target from browser or messenger | **platform** |
 | FR-507 | Manual entry, structured ingredients | **done** |
 | FR-511 | Bulk import and migration | **done** — `importMany`, partial success with per-entry reasons and duplicate detection |
 | FR-515 | Categories, tags, cuisine, season, effort | **done** — `readFacets` / `findRecipes` / `seasonOf`; an unnamed season means all year, not never |
 | FR-517 | "What can I cook with what's here" | **done** — `suggest.ts` scores against staples state |
-| FR-518 | Exclusion search ("without nuts") | **missing** — depends on FR-908 |
+| FR-518 | Exclusion search ("without nuts") | **done** — `recipesWithout`, coupled to the stored allergies as the spec asks |
 | FR-520 | Own result photo | **done** — `recipeImages` keeps the family's photo beside the one the recipe arrived with, rather than over it |
 | FR-521 | Modifications and versioning | **done** — `revisions` / `latestRevision`, kept as the sentence a person wrote |
 | FR-522 | Source attribution and link | **done** — `recipeImport.ts` |
@@ -133,7 +144,7 @@ The largest concentration of genuine gaps: 21 unreferenced, and most are real.
 | FR-525 | Sharing with other families, export | **done** — `shareRecipe` / `exportRecipes`; asserted from the leak direction, no entity, person or family id leaves |
 | FR-526 | Heritage recipes archive | **primitive** — `collection` + `document` |
 | FR-532 | Voice control during cooking | **missing** |
-| FR-533 | Unit and temperature conversion, convection | **partial** — `units.ts` converts units, not temperatures |
+| FR-533 | Unit and temperature conversion | **done** — `convertOven` / `readOvenTemperature` alongside the unit conversions |
 | FR-534 | Nutrition facts, optional and informational | **done** — `readNutrition`; reports what the recipe brought and computes nothing, off until switched on |
 | FR-535 | Kids' cook mode, picture-based steps | **done** — `kidSteps` / `recipesForKids`; adult steps marked rather than removed, a parent's tag overrides the matcher |
 
@@ -143,11 +154,11 @@ The largest concentration of genuine gaps: 21 unreferenced, and most are real.
 |---|---|---|
 | FR-601 | Drag & drop from the recipe collection | **partial** — the capability is there as pick-up-then-put-down (`plan-library` → `plan-target`), deliberately instead of a pointer drag, which excludes keyboard and screen-reader use. The drag gesture itself is not implemented |
 | FR-602 | Meal types | **done** — `mealType` |
-| FR-605 | Leftovers as first-class linked entries | **missing** |
-| FR-606 | Recurring patterns (Friday pizza) | **missing** |
-| FR-607 | Plan templates, reuse of past weeks | **partial** — `templates.ts` covers packs, not whole weeks |
-| FR-612 | Wish day, voting, veto | **partial** — `poll` exists; no wish day or veto |
-| FR-614 | Balance across the week | **missing** |
+| FR-605 | Leftovers as first-class linked entries | **done** — `leftoverSlotIds` in `mealPlanning.ts`, linked to the meal they came from |
+| FR-606 | Recurring patterns (Friday pizza) | **done** — `mealPatterns` / `patternFor` |
+| FR-607 | Plan templates, reuse of past weeks | **done** — `weekAsTemplate` / `shiftTemplate` take a whole week forward |
+| FR-612 | Wish days and vetoes | **done** — `wishDays` / `vetoedRecipeIds` |
+| FR-614 | Balance across the week | **done** — `weekBalance`; counts only, never a score (SPEC §1.3) |
 | FR-616 | Automatic week suggestion | **done** — `suggest.ts` |
 
 ## §7 Shopping
@@ -182,7 +193,7 @@ almost all of them are that statement being true.
 
 | | | status |
 |---|---|---|
-| FR-802 | Timetables with A/B week alternation | **missing** — the recurrence engine has no alternation |
+| FR-802 | Timetables with A/B week alternation | **done** — `weekLabel` in `timetable.ts`, anchored on a school-named week and Monday-aligned |
 | FR-803 | Substitution plans via ingestion | **backend** |
 | FR-804 | Homework → child-owned tasks | **primitive** |
 | FR-806 | Report cards as documents | **primitive** |
@@ -204,12 +215,12 @@ almost all of them are that statement being true.
 | | | status |
 |---|---|---|
 | FR-902 | Doctor appointments with preparation | **primitive** — event + lead-time tasks |
-| FR-903 | Well-child checkups with statutory windows | **missing** — needs the German schedule |
-| FR-904 | Vaccinations and boosters, due logic | **missing** |
+| FR-903 | Well-child checkups with statutory windows | **done** — `WELL_CHILD_CHECKS` (U1–U9, J1) with a closing-window state |
+| FR-904 | Vaccinations and boosters, due logic | **done** — `VACCINATION_SCHEDULE` + `preventiveSchedule` |
 | FR-905 | Medication plans as protocols | **done** |
-| FR-906 | Illness documentation, fever curve | **partial** — measurement protocols exist; no curve |
+| FR-906 | Growth measurements over time | **done** — `measurementSeries`, trend read from the last two points only |
 | FR-907 | Sick notes as tasks with contact shortcuts | **primitive** |
-| FR-908 | Allergy pass and emergency information | **missing** — nothing in the repo models allergies |
+| FR-908 | Allergy pass and emergency information | **done** — allergies on the person in `health.ts`, with generous substring matching |
 | FR-910 | Prescriptions and reorders as deadline tasks | **primitive** |
 | FR-911 | Emergency plan, exportable | **done** — `paper.ts` emergency binder |
 | FR-912 | Therapy appointments as sub-calendar | **primitive** |
@@ -250,22 +261,22 @@ almost all of them are that statement being true.
 | FR-1204 | Widgets | **platform** — needs an extension target |
 | FR-1209 | Voice-assistant query | **parked** — OPEN-02 |
 | FR-1210 | Wearable companion | **parked** — OPEN-02 |
-| FR-1211 | Dark mode, font size, accessibility | **partial** — the theme is pinned to light; no font-size control |
+| FR-1211 | Dark mode and font size | **partial** — dark mode follows the device (`useColorScheme` drives the theme, asserted in the browser suite); no font-size control of the app's own, so it relies on the platform's |
 | FR-1303 | Location-based reminders | **parked** — OPEN-02 |
 
 ## §14 Privacy and compliance
 
 | | | status |
 |---|---|---|
-| FR-1401 | Privacy policy in-app, versioned | **missing** — drafted in `docs/legal/`, not reachable in the app |
-| FR-1402 | Imprint in-app | **missing** |
-| FR-1404 | Disclosure of which data flows where | **missing** in-app |
+| FR-1401 | Privacy policy in-app, versioned | **done** — `legal.ts` + `LegalScreen`, readable before joining anything; browser-tested |
+| FR-1402 | Imprint in-app | **done** — `imprint()`, same screen, unfinished sections named rather than hidden |
+| FR-1404 | Disclosure of which data flows where | **done** — `DATA_FLOWS`, its own tab |
 | FR-1406 | Granular consent at first start | **done** — `consent`, `compliance.ts` |
 | FR-1413 | Rectification: all fields editable | **by design** — every field is an operation |
 | FR-1416 | Objection to individual processings | **done** — `OBJECTABLE_PROCESSINGS` / `mayProcess`, read inside `learningAllowed` so the objection has an effect rather than a record |
 | FR-1418 | Encryption in transit and at rest | **platform** — TLS and disk are deployment concerns |
-| FR-1419 | Access log | **missing** |
-| FR-1420 | Remote sign-out of lost devices | **partial** — the client calls `/devices/revoke`; the server offers `DELETE /devices/{id}`. Same contract mismatch class as the others, not yet fixed |
+| FR-1419 | Access log | **done** — `accessLog` in `people.ts` |
+| FR-1420 | Remote sign-out of lost devices | **done** — the client now calls `DELETE /devices/{id}`, matching the server; the contract mismatch is fixed |
 | FR-1421 | Ability to notify all users of a breach | **organizational** |
 
 ## Principles, security, obligations, store, contract, architecture
@@ -274,10 +285,10 @@ almost all of them are that statement being true.
 |---|---|---|
 | P-03 | What the system can know, it does not ask | **by design** |
 | P-06 | Comments live on the object | **done** — `comment` |
-| SEC-02 | Second factor for sensitive areas | **missing** |
+| SEC-02 | Second factor for sensitive areas | **done** — `needsSecondFactor` in `people.ts` |
 | SEC-03 | Guest links scoped, expiring, revocable | **done** — `clampGuestLinkDays`, revoke |
 | SEC-04 | Encryption in transit and at rest | **platform** |
-| SEC-05 | Access log for sensitive areas | **missing** |
+| SEC-05 | Access log for sensitive areas | **done** — `accessLog`, same mechanism as FR-1419 |
 | SEC-06 | A channel to reach all users | **organizational** |
 | OBL-01 | Record of processing activities | **done** — `docs/legal/records-of-processing.md` |
 | OBL-02 | Data protection impact assessment | **done** — `docs/legal/dpia.md` |
@@ -295,19 +306,30 @@ almost all of them are that statement being true.
 
 ## What this changes
 
-The number that matters is not 154. It is **20 absent plus 12 half-built**.
+The number that matters is not 154. It is **2 absent plus 2 half-built**.
 
-The recipe cluster that was the largest share at the first review is closed, and
-so are the in-app legal texts — a privacy policy and an imprint are now
-reachable before joining anything, which is what "in the app" has to mean for a
-person deciding whether to trust it. What remains absent is genuinely harder
-rather than merely undone: the health module's German-specific schedules
-(well-child checkups, vaccination due logic, the allergy pass), the
-second-factor and access-log security requirements, and the ingestion paths that
-need an AI provider.
+The two that are absent are absent for a reason no schedule fixes: FR-503 wants
+a recipe pulled out of a social video, and FR-532 wants voice control at the
+hob. One needs an AI service, the other a speech capability. Everything else in
+the specification either exists or is waiting on a server, a device or a
+signature.
 
-**How these counts are produced.** Not by hand. `docs/traceability.md` is parsed
-row by row — the grouped STO and CON rows expanded to their individual
-identifiers — and the totals above come from that count. The first version of
-this summary was estimated by eye and was wrong in four rows; it is worth saying
-so, because a traceability table nobody counts is a table that drifts.
+The two **partial** rows are FR-601 (the placement flow exists; the pointer-drag
+gesture does not, deliberately) and FR-1211 (dark mode follows the device; there
+is no font-size control of the app's own).
+
+Which means the specification is very nearly answered, and the project's real
+risk has moved somewhere this table does not measure: the ten **backend** rows
+are PHP that has been read but barely run, the eight **platform** rows need a
+device and a store account, and the twelve **organizational** rows need
+signatures. None of those is closed by writing more application code.
+
+**How these counts are produced.** Not by hand. This file is parsed row by row —
+the grouped STO and CON rows expanded to their individual identifiers — and the
+totals above come from that count. Two corrections were needed to get here: the
+first summary was estimated by eye and wrong in four rows, and the second
+re-checked only the rows it had just edited, leaving fifteen entries claiming
+**missing** about code that had been in the repository for days. A traceability
+table nobody re-verifies is a table that drifts, and it drifts pessimistically —
+which is worse than drifting the other way, because it sends people to build
+what is already there.

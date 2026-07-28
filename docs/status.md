@@ -5,8 +5,9 @@ Position of every work package in [`PLAN.md`](../PLAN.md) §6.
 **This tracks the plan, not the specification, and the two are not the same
 thing.** A work package can be finished while requirements it was meant to serve
 are still absent. [`traceability.md`](traceability.md) tracks the other axis —
-all 363 numbered requirements in `SPEC.md` — and its headline is that 20 are
-absent outright and 12 are half-built. Read it before treating a row below as a
+all 363 numbered requirements in `SPEC.md` — and its headline is that 2 are
+absent outright and 2 are half-built, both of the absent pair needing a service
+this repository cannot provide. Read it before treating a row below as a
 statement about the product.
 
 Legend: **done** — implemented and covered by tests that run in CI ·
