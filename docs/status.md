@@ -25,8 +25,8 @@ convergence itself survived the attack.
 | 0.4 Domain core | done | ids, HLC, operations, field tiers, reducer, state |
 | 0.5 Sync engine | done | protocol, client, reference server |
 | 0.6 Conflict tiers | done | tier registry, conflict records, resolution that travels to every device; 5 property tests over randomized interleavings |
-| 0.7 Storage adapters | partial | `StateStore` seam, in-memory and SQL implementations with 22 equivalence tests. The expo-sqlite and wa-sqlite/OPFS drivers are written against structural interfaces and unexercised — they need a device and a browser |
-| 0.8 Auth & family lifecycle | partial | client in `packages/api/src/auth.ts`, endpoints in the backend module. The app's join flow is not wired, so the shell still opens a local-only client |
+| 0.7 Storage adapters | partial | `StateStore` seam, in-memory and SQL implementations with 22 equivalence tests; the app opens the native SQLite driver on iOS/Android. wa-sqlite on OPFS needs the single-writer SharedWorker (PLAN §3.3), so the web build still runs in memory rather than pretending to persist |
+| 0.8 Auth & family lifecycle | done | join by invitation, create a family, redeem a recovery code; the session persists in the local database and the shell boots straight into the family. Endpoints are in the backend module and unexercised |
 | 0.9 Push plumbing | backend | `notifications.ts` decides what to send; delivery is the platform's |
 | 0.10 Legal baseline | done | access and portability bundles, erasure planning, consent gating, learning gates, retention |
 | 0.11 Phase-0 exit test | done | three devices, offline, lossless sync, snapshot bootstrap |
@@ -94,6 +94,10 @@ implemented and tested here.
 
 **Two things need a native capability**: home-screen widgets and keeping the
 display awake in cook mode. Both are named TODOs rather than stubs.
+
+**The web build does not persist yet.** wa-sqlite on OPFS needs a SharedWorker
+to enforce a single writer across tabs; until that is wired the browser runs in
+memory, which is stated in `apps/app/src/storage.ts` rather than hidden.
 
 **The design system is consumed through a link** to a checkout beside this
 repository, which installs locally but not in CI — hence the split CI, whose

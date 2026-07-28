@@ -38,6 +38,19 @@ export const en = {
   "onboarding.continue": "Continue",
   "onboarding.startHere": "Start here",
 
+  "join.haveLink": "I have an invitation",
+  "join.createFamily": "Start a new family",
+  "join.lostDevice": "New or lost device",
+  "join.codePlaceholder": "Paste the code from the link",
+  "join.invitedAs": "{name} — joining {family}",
+  "join.joinNow": "Join",
+  "join.familyName": "Family name",
+  "join.familyId": "Family id",
+  "join.recoveryCode": "Recovery code",
+  "join.recoverHint":
+    "Normally another adult approves your new device. Use the recovery code only if nobody can.",
+  "join.failed": "That did not work. Check the code and your connection.",
+
   "list.title": "Shopping",
   "list.section.reported": "Reported empty",
   "list.section.probablyDue": "Probably due",
@@ -185,6 +198,19 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "onboarding.role.child": "Kind",
   "onboarding.continue": "Weiter",
   "onboarding.startHere": "Hier starten",
+
+  "join.haveLink": "Ich habe eine Einladung",
+  "join.createFamily": "Neue Familie anlegen",
+  "join.lostDevice": "Neues oder verlorenes Gerät",
+  "join.codePlaceholder": "Code aus dem Link einfügen",
+  "join.invitedAs": "{name} — tritt {family} bei",
+  "join.joinNow": "Beitreten",
+  "join.familyName": "Familienname",
+  "join.familyId": "Familien-ID",
+  "join.recoveryCode": "Wiederherstellungscode",
+  "join.recoverHint":
+    "Normalerweise schaltet ein anderer Erwachsener dein neues Gerät frei. Den Code brauchst du nur, wenn das niemand kann.",
+  "join.failed": "Das hat nicht funktioniert. Prüfe den Code und die Verbindung.",
 
   "list.title": "Einkauf",
   "list.section.reported": "Ist alle",

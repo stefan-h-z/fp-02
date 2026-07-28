@@ -9,15 +9,19 @@
  * paints an empty list while the local database is still loading is how a family
  * concludes the app lost their shopping list.
  */
-import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { Slot } from "expo-router";
 import { TamaguiProvider, Theme } from "@tamagui/core";
 import { tamaguiConfig } from "@cp/tokens";
+import { Alert, Spinner } from "@cp/ui";
 import { SyncClient } from "@fam/sync";
-import { MemoryStateStore } from "@fam/storage";
-import { HttpSyncTransport } from "@fam/api";
+import type { StateStore } from "@fam/storage";
+import { AuthClient, HttpSyncTransport, type DeviceSession } from "@fam/api";
 import { AppProvider } from "../src/runtime.js";
 import { registerAppIcons } from "../src/icons.js";
+import { openLocalStore } from "../src/storage.js";
+import { hasSession, loadSession, saveSession } from "../src/session.js";
+import { JoinScreen } from "../src/screens/JoinScreen.js";
 
 type TamaguiProviderConfig = NonNullable<ComponentProps<typeof TamaguiProvider>["config"]>;
 
@@ -32,37 +36,73 @@ const API_BASE_URL = process.env["EXPO_PUBLIC_API_URL"] ?? "http://localhost:800
 // placeholders (see src/icons.ts).
 registerAppIcons();
 
+interface Ready {
+  readonly store: StateStore;
+  readonly client: SyncClient | undefined;
+}
+
 export default function RootLayout(): ReactNode {
-  const [client, setClient] = useState<SyncClient | undefined>(undefined);
+  const [ready, setReady] = useState<Ready | undefined>(undefined);
   const [actorId, setActorId] = useState<string | null>(null);
+  const [recoveryCode, setRecoveryCode] = useState<string | undefined>(undefined);
+  const [auth] = useState(() => new AuthClient({ baseUrl: API_BASE_URL }));
+
+  const clientFor = useCallback(
+    (store: StateStore, session: DeviceSession): SyncClient =>
+      new SyncClient({
+        familyId: session.familyId,
+        deviceId: session.deviceId,
+        store,
+        transport: new HttpSyncTransport({ baseUrl: API_BASE_URL, token: () => session.token }),
+      }),
+    [],
+  );
 
   useEffect(() => {
     let cancelled = false;
 
-    const open = async (): Promise<void> => {
-      // TODO(WP-0.8): the device session comes from the join flow; until that
-      // screen exists the shell opens an unauthenticated local-only client, and
-      // the in-memory store stands in for the platform SQLite driver.
-      const store = new MemoryStateStore();
-      const transport = new HttpSyncTransport({
-        baseUrl: API_BASE_URL,
-        token: () => undefined,
-      });
-      const next = new SyncClient({
-        familyId: "local",
-        deviceId: "this-device",
-        store,
-        transport,
-      });
-      await next.open();
-      if (!cancelled) setClient(next);
+    const boot = async (): Promise<void> => {
+      const store = await openLocalStore();
+      const session = await loadSession(store);
+
+      if (!hasSession(session)) {
+        if (!cancelled) setReady({ store, client: undefined });
+        return;
+      }
+
+      const client = clientFor(store, session);
+      await client.open();
+      if (cancelled) return;
+
+      setActorId(session.personId);
+      setReady({ store, client });
+      // A first sync is best-effort: the app is fully usable without it.
+      void client.sync().catch(() => undefined);
     };
 
-    void open();
+    void boot();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [clientFor]);
+
+  const onJoined = useCallback(
+    async (session: DeviceSession, code?: string): Promise<void> => {
+      if (ready === undefined) return;
+      await saveSession(ready.store, session);
+
+      const client = clientFor(ready.store, session);
+      await client.open();
+      // A device that has just joined holds nothing, so it takes the server's
+      // materialized snapshot rather than replaying the family's whole history.
+      await client.bootstrap().catch(() => undefined);
+
+      setActorId(session.personId);
+      setRecoveryCode(code);
+      setReady({ store: ready.store, client });
+    },
+    [ready, clientFor],
+  );
 
   return (
     // The cast is an artefact of consuming the design system through a link to
@@ -71,12 +111,44 @@ export default function RootLayout(): ReactNode {
     // away once @cp/tokens is installed from the registry (docs/status.md).
     <TamaguiProvider config={tamaguiConfig as unknown as TamaguiProviderConfig} defaultTheme="light">
       <Theme name="light">
-        {client === undefined ? null : (
-          <AppProvider client={client} actorId={actorId} setActorId={setActorId}>
+        {ready === undefined ? (
+          <Spinner />
+        ) : ready.client === undefined ? (
+          <AppProvider client={unjoinedClient(ready.store)} actorId={null} setActorId={setActorId}>
+            <JoinScreen auth={auth} onJoined={(session, code) => void onJoined(session, code)} />
+          </AppProvider>
+        ) : (
+          <AppProvider client={ready.client} actorId={actorId} setActorId={setActorId}>
+            {recoveryCode === undefined ? null : (
+              <Alert
+                variant="warning"
+                label={recoveryCode}
+                hint="Write this down. It cannot be shown again."
+              />
+            )}
             <Slot />
           </AppProvider>
         )}
       </Theme>
     </TamaguiProvider>
   );
+}
+
+/**
+ * The join screen needs the runtime's translator, and the runtime needs a client.
+ * Rather than make the client optional everywhere — a null check in every screen
+ * for the sake of one — the pre-join state gets a client wired to nothing. It is
+ * never synced and no screen reads from it.
+ */
+function unjoinedClient(store: StateStore): SyncClient {
+  const refuse = (): never => {
+    throw new Error("not joined");
+  };
+
+  return new SyncClient({
+    familyId: "unjoined",
+    deviceId: "unjoined",
+    store,
+    transport: { push: refuse, pull: refuse, snapshot: refuse },
+  });
 }
