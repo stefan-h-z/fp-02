@@ -17,7 +17,7 @@ packages/
   api/       HTTP transport to the backend, plus the passwordless auth client.
   i18n/      German and English catalogs and locale-aware formatting.
 apps/
-  app/       Commands and selectors, the screens bound to them, and the Expo shell.
+  app/       Commands and selectors, the nine screens bound to them, and the shell.
 e2e/         The SPEC's acceptance scenarios as a multi-device simulation.
 ```
 
@@ -86,10 +86,11 @@ stayed offline throughout catches up correctly.
 Stated plainly, because a half-built thing described as finished is worse than one
 described accurately:
 
-- **Most of the screens.** Five exist — today, shopping, week plan, protocol and
-  conflict resolution — and `pnpm --filter @fam/app export:web` bundles the whole
-  chain. They are not render-tested, there is no join flow yet, and the shell still
-  opens an in-memory store instead of the platform SQLite driver.
+- **The join flow, and rendered proof of the screens.** Nine screens exist — today,
+  my day, shopping, week plan, cook mode, a child's routine, protocol, conflict
+  resolution and settings — and `pnpm --filter @fam/app export:web` bundles the
+  whole chain. They are not render-tested, and the shell still opens a local-only
+  in-memory client because nothing joins a family yet.
 - **A running backend.** The family module for the Laravel platform lives in
   `backend-php-01` and has never been executed: this environment cannot fetch
   Composer packages. `packages/sync/src/reference-server.ts` is the executable
