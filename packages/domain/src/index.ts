@@ -34,3 +34,4 @@ export * from "./people.js";
 export * from "./mealPlanning.js";
 export * from "./timetable.js";
 export * from "./recipeLibrary.js";
+export * from "./shoppingDetails.js";
