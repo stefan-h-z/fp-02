@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Family",
+    "slug": "family-app",
+    "version": "0.1.0",
+    "orientation": "default",
+    "scheme": "family",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": { "supportsTablet": true, "bundleIdentifier": "app.family.fp02" },
+    "android": { "package": "app.family.fp02" },
+    "web": { "bundler": "metro", "output": "static" },
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": false }
+  }
+}

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "main": "./src/index.ts",
+  "main": "expo-router/entry",
   "dependencies": {
     "@fam/api": "workspace:*",
     "@fam/domain": "workspace:*",
@@ -19,9 +19,26 @@
     "expo-router": "~4.0.0",
     "expo-sqlite": "~15.0.0",
     "react-native-web": "^0.19.12",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "@react-navigation/native": "^7.0.0",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0",
+    "expo-constants": "~17.0.0",
+    "expo-linking": "~7.0.0",
+    "expo-font": "~13.0.0",
+    "expo-status-bar": "~2.0.0",
+    "@expo/metro-runtime": "~4.0.0",
+    "react-native-helmet-async": "2.0.4",
+    "@react-navigation/bottom-tabs": "^7.0.0",
+    "react-native-gesture-handler": "~2.20.2",
+    "react-native-reanimated": "~3.16.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.0"
+  },
+  "scripts": {
+    "start": "expo start",
+    "web": "expo start --web",
+    "export:web": "expo export --platform web"
   }
 }
