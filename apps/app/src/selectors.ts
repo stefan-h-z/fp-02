@@ -132,7 +132,7 @@ export function selectDueDoses(state: FamilyState, now: number): readonly Protoc
     .flatMap((entity) => {
       const protocol = readProtocol(state, entity.id);
       if (protocol === undefined) return [];
-      return planInstances(protocol, state, { from: now - DAY_MS, to: now + DAY_MS });
+      return planInstances(protocol, state, { from: now - DAY_MS, to: now + DAY_MS, now });
     })
     .filter((instance) => instance.state === "due" || instance.state === "missed")
     .sort((a, b) => a.dueAt - b.dueAt);

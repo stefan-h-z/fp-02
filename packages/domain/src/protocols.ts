@@ -122,7 +122,17 @@ export function instanceId(protocolId: string, dueAt: number): string {
 export function planInstances(
   protocol: ProtocolDefinition,
   state: FamilyState,
-  window: { readonly from: number; readonly to: number },
+  window: {
+    readonly from: number;
+    readonly to: number;
+    /**
+     * The present moment, which is NOT the end of the window. Asking for
+     * tomorrow's doses must not make this evening's look overdue — that is the
+     * difference between a list of what is due and a list of accusations.
+     * Defaults to the window end for the common case of asking about the past.
+     */
+    readonly now?: number;
+  },
 ): readonly ProtocolInstance[] {
   const from = Math.max(protocol.startsAt, window.from);
   const to = Math.min(protocol.endsAt, window.to);
@@ -133,9 +143,11 @@ export function planInstances(
       ? everyNHours(protocol, state, from, to)
       : dailySlots(protocol, from, to);
 
+  const now = window.now ?? window.to;
+
   return dueTimes
     .filter((dueAt) => protocol.wakeCapable || !isNightTime(protocol, dueAt))
-    .map((dueAt) => readInstance(protocol, state, dueAt, window.to));
+    .map((dueAt) => readInstance(protocol, state, dueAt, now));
 }
 
 /**

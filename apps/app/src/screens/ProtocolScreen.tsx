@@ -34,7 +34,7 @@ export function ProtocolScreen(props: ProtocolScreenProps): ReactNode {
     () =>
       protocol === undefined
         ? []
-        : planInstances(protocol, state, { from: now() - DAY_MS, to: now() + 2 * DAY_MS }),
+        : planInstances(protocol, state, { from: now() - DAY_MS, to: now() + 2 * DAY_MS, now: now() }),
     [protocol, state, now],
   );
 

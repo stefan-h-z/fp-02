@@ -265,3 +265,29 @@ describe("documentation for the doctor (FR-924)", () => {
     expect(summary.measurements).toEqual([{ at: instances[0]!.dueAt, value: 38.4 }]);
   });
 });
+
+describe("asking about the future does not accuse the present", () => {
+  it("leaves a dose that is still hours away as upcoming, not missed", () => {
+    const protocol = seedProtocol({ frequencyKind: "fixed-times", fixedTimes: ["480", "1200"], startsAt: START });
+    const morning = START + 8 * HOUR_MS;
+
+    // The day view asks for a window reaching into tomorrow; the evening dose
+    // must not be reported as missed just because the window extends past it.
+    const instances = planInstances(protocol, state, {
+      from: START,
+      to: START + 2 * DAY,
+      now: morning + 30 * 60 * 1000,
+    });
+
+    expect(instances[0]?.state).toBe("due");
+    expect(instances[1]?.state).toBe("upcoming");
+  });
+
+  it("still treats the window end as the present when no moment is given", () => {
+    const protocol = seedProtocol({ frequencyKind: "fixed-times", fixedTimes: ["480"], startsAt: START });
+
+    const instance = planInstances(protocol, state, { from: START, to: START + 8 * HOUR_MS + 30 * 60 * 1000 })[0];
+
+    expect(instance?.state).toBe("due");
+  });
+});
