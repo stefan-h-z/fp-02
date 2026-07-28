@@ -8,7 +8,9 @@
     "check-types": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check-types:core": "tsc --noEmit -p tsconfig.core.json",
+    "lint:core": "eslint packages e2e --max-warnings 0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
