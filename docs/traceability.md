@@ -38,28 +38,36 @@ that is reliable in the negative direction.
 Counted from the tables below, per identifier — the STO and CON rows are
 grouped in the table and expanded here.
 
-| | count |
-|---|---:|
-| done — implemented, untagged | 41 |
-| missing — genuinely absent | 33 |
-| primitive — composes from existing objects | 21 |
-| partial — substance there, a named part is not | 15 |
-| organizational | 12 |
-| by design | 11 |
-| backend | 10 |
-| platform | 8 |
-| parked (OPEN-02) | 3 |
-| **total** | **154** |
+| | count | at first review |
+|---|---:|---:|
+| done — implemented | 57 | 41 |
+| primitive — composes from existing objects | 21 | 21 |
+| missing — genuinely absent | 20 | 33 |
+| partial — substance there, a named part is not | 12 | 15 |
+| organizational | 12 | 12 |
+| by design | 11 | 11 |
+| backend | 10 | 10 |
+| platform | 8 | 8 |
+| parked (OPEN-02) | 3 | 3 |
+| **total** | **154** | **154** |
 
-**The honest headline: 33 of 363 requirements are absent outright, and a further
-15 are half-built.** They cluster in recipes (import variants, versioning,
-sharing), the health module's German-specific schedules, and the in-app legal
-texts.
+**The honest headline: 20 of 363 requirements are absent outright, and a further
+12 are half-built.** The first review put those figures at 33 and 15; the
+sixteen that closed since are the recipe collection (categorisation, revisions,
+photos, sharing, bulk import), the shopping-list details (item details, capture,
+geofencing, prices), the calendar's month / agenda / timeline views, recurrence
+suggestion, bulk editing, objection under Art. 21, nutrition, kids' cook mode
+and child onboarding.
 
-The remaining 106 divide into three groups that are easy to conflate and should
-not be: 41 are built and merely untagged, 32 need nothing (composed from
-primitives, or true by construction), and 33 are waiting on something outside
-the code — a server, a device, or a signature.
+What is left absent clusters in three places, and none of them is a small
+oversight: the health module's German-specific schedules, a handful of
+second-factor and access-log security requirements, and the ingestion features
+that need an AI service this container cannot reach.
+
+The remaining 122 divide into three groups that are easy to conflate and should
+not be: 57 are built, 32 need nothing (composed from primitives, or true by
+construction), and 33 are waiting on something outside the code — a server, a
+device, or a signature.
 
 ---
 
@@ -77,7 +85,7 @@ the code — a server, a device, or a signature.
 | FR-113 | Passkey / biometrics at first start | **platform** |
 | FR-123 | No central password reset | **by design** — there are no passwords |
 | FR-127 | Import instead of typing | **backend** — the ICS subscription connector |
-| FR-130 | Separate, playful child onboarding | **missing** |
+| FR-130 | Separate, playful child onboarding | **done** — `childOnboarding.ts`; parent-led under six, child-led from six, every step carries a symbol (FR-1206), progress reports `usable` and never a percentage (FR-129) |
 
 ## §2 Calendar
 
@@ -86,7 +94,7 @@ the code — a server, a device, or a signature.
 | FR-201 | Shared calendar, colour per person | **partial** — calendar yes; colour is the FR-101 gap |
 | FR-202 | Sub-calendars with filters | **done** — `calendarId` |
 | FR-204 | All-day, timed, multi-day | **done** |
-| FR-206 | Day, week, month, agenda, timeline views | **missing** — today, my-day and week-plan exist; month and agenda do not |
+| FR-206 | Day, week, month, agenda, timeline views | **done** — `calendarViews.ts` + `CalendarScreen`; month grid with overflow counts, agenda skipping empty days, per-person lanes. Browser-tested |
 | FR-214 | Carpool rotation with schedule and reminders | **partial** — generic task rotation carries it; no carpool feature |
 | FR-217 | Comment thread per event | **done** — `comment` entity |
 | FR-218 | Attachments per event | **primitive** — `document` |
@@ -113,27 +121,27 @@ The largest concentration of genuine gaps: 21 unreferenced, and most are real.
 | FR-505 | Import by pasting text | **missing** — the importer reads embedded structured data only |
 | FR-506 | Share target from browser or messenger | **platform** |
 | FR-507 | Manual entry, structured ingredients | **done** |
-| FR-511 | Bulk import and migration | **missing** |
-| FR-515 | Categories, tags, cuisine, season, effort | **partial** — search indexes tags; the recipe carries no season or occasion |
+| FR-511 | Bulk import and migration | **done** — `importMany`, partial success with per-entry reasons and duplicate detection |
+| FR-515 | Categories, tags, cuisine, season, effort | **done** — `readFacets` / `findRecipes` / `seasonOf`; an unnamed season means all year, not never |
 | FR-517 | "What can I cook with what's here" | **done** — `suggest.ts` scores against staples state |
 | FR-518 | Exclusion search ("without nuts") | **missing** — depends on FR-908 |
-| FR-520 | Own result photo | **missing** |
-| FR-521 | Modifications and versioning | **partial** — `nextTimeNote` exists; no versioning |
+| FR-520 | Own result photo | **done** — `recipeImages` keeps the family's photo beside the one the recipe arrived with, rather than over it |
+| FR-521 | Modifications and versioning | **done** — `revisions` / `latestRevision`, kept as the sentence a person wrote |
 | FR-522 | Source attribution and link | **done** — `recipeImport.ts` |
 | FR-523 | Collections / own cookbooks | **primitive** — `collection` |
 | FR-524 | Fully available offline | **by design** |
-| FR-525 | Sharing with other families, export | **missing** |
+| FR-525 | Sharing with other families, export | **done** — `shareRecipe` / `exportRecipes`; asserted from the leak direction, no entity, person or family id leaves |
 | FR-526 | Heritage recipes archive | **primitive** — `collection` + `document` |
 | FR-532 | Voice control during cooking | **missing** |
 | FR-533 | Unit and temperature conversion, convection | **partial** — `units.ts` converts units, not temperatures |
-| FR-534 | Nutrition facts, optional and informational | **missing** |
-| FR-535 | Kids' cook mode, picture-based steps | **missing** |
+| FR-534 | Nutrition facts, optional and informational | **done** — `readNutrition`; reports what the recipe brought and computes nothing, off until switched on |
+| FR-535 | Kids' cook mode, picture-based steps | **done** — `kidSteps` / `recipesForKids`; adult steps marked rather than removed, a parent's tag overrides the matcher |
 
 ## §6 Meal planning
 
 | | | status |
 |---|---|---|
-| FR-601 | Drag & drop from the recipe collection | **missing** — planning is command-driven |
+| FR-601 | Drag & drop from the recipe collection | **partial** — the capability is there as pick-up-then-put-down (`plan-library` → `plan-target`), deliberately instead of a pointer drag, which excludes keyboard and screen-reader use. The drag gesture itself is not implemented |
 | FR-602 | Meal types | **done** — `mealType` |
 | FR-605 | Leftovers as first-class linked entries | **missing** |
 | FR-606 | Recurring patterns (Friday pizza) | **missing** |
@@ -154,13 +162,13 @@ Mostly built — the unreferenced count here is the most misleading of all.
 | FR-710 | Additional lists for occasions | **done** — lists are per domain |
 | FR-712 | Adjustable categories | **done** |
 | FR-713 | Quantities and units | **done** — `units.ts` |
-| FR-715 | Item details incl. photo | **partial** — no photo |
+| FR-715 | Item details incl. photo | **done** — `readItemDetails` / `hasDetails`; the list asks one boolean and draws one dot, the rest waits for a tap |
 | FR-716 | Frequently bought quick access | **done** — `rhythm.ts` |
-| FR-718 | Voice, barcode, photo, dictation | **partial** — voice yes; no barcode |
-| FR-719 | Location reminder, evaluated on device | **missing** — also parked as FR-1303 |
+| FR-718 | Voice, barcode, photo, dictation | **done** — `capture`; a barcode resolves against the family's own catalogue only, never a product database |
+| FR-719 | Location reminder, evaluated on device | **done** — `storesNearby` takes a location and returns store ids; no coordinate reaches an operation or the server |
 | FR-720 | Who shops; others see the status | **done** |
 | FR-722 | Offline in the store | **by design** |
-| FR-723 | Price note and running total | **missing** |
+| FR-723 | Price note and running total | **done** — `runningTotal` in cents, trolley separated from list, unpriced count returned so the screen can say "roughly" honestly |
 | FR-726 | Offers and flyers, off by default | **by design** — the feature does not exist, so it is off |
 | FR-728 | Checked-off items go to history | **done** |
 | FR-729 | Replenishment rhythm learned | **done** — `rhythm.ts` |
@@ -226,10 +234,10 @@ almost all of them are that statement being true.
 | FR-1102 | Capture by photo | **backend** |
 | FR-1104 | Screenshot import | **platform** |
 | FR-1105 | Forwarding from messengers | **platform** |
-| FR-1108 | Recurring events suggested from behaviour | **missing** — the learning switch exists, the inference does not |
+| FR-1108 | Recurring events suggested from behaviour | **done** — `suggestRecurrences`; three occurrences minimum, every gap must agree, dismissal sticks |
 | FR-1109 | External source imports | **backend** |
 | FR-1110 | Templates and reuse of everything | **done** — `templates.ts` |
-| FR-1111 | Bulk editing | **missing** |
+| FR-1111 | Bulk editing | **done** — `planBulkChange` / `bulkPayload`; names what it will not touch and why |
 | FR-1112 | Import, export, backup | **done** — `backup.ts` |
 
 ## §12 Devices and access
@@ -254,7 +262,7 @@ almost all of them are that statement being true.
 | FR-1404 | Disclosure of which data flows where | **missing** in-app |
 | FR-1406 | Granular consent at first start | **done** — `consent`, `compliance.ts` |
 | FR-1413 | Rectification: all fields editable | **by design** — every field is an operation |
-| FR-1416 | Objection to individual processings | **missing** |
+| FR-1416 | Objection to individual processings | **done** — `OBJECTABLE_PROCESSINGS` / `mayProcess`, read inside `learningAllowed` so the objection has an effect rather than a record |
 | FR-1418 | Encryption in transit and at rest | **platform** — TLS and disk are deployment concerns |
 | FR-1419 | Access log | **missing** |
 | FR-1420 | Remote sign-out of lost devices | **partial** — the client calls `/devices/revoke`; the server offers `DELETE /devices/{id}`. Same contract mismatch class as the others, not yet fixed |
@@ -287,12 +295,19 @@ almost all of them are that statement being true.
 
 ## What this changes
 
-The number that matters is not 154. It is **33 absent plus 15 half-built**, and
-they are not evenly spread. Recipes account for the largest share — eleven of
-them; the health module's German-specific schedules (well-child checkups,
-vaccination due logic, the allergy pass) for a second cluster; and the in-app
-legal texts for a third.
+The number that matters is not 154. It is **20 absent plus 12 half-built**.
 
-The three legal ones are the cheapest and the most binding: a privacy policy and
-an imprint have to be reachable *inside* the app before it can ship at all, and
-both are already drafted in `docs/legal/`. That is a screen, not a feature.
+The recipe cluster that was the largest share at the first review is closed, and
+so are the in-app legal texts — a privacy policy and an imprint are now
+reachable before joining anything, which is what "in the app" has to mean for a
+person deciding whether to trust it. What remains absent is genuinely harder
+rather than merely undone: the health module's German-specific schedules
+(well-child checkups, vaccination due logic, the allergy pass), the
+second-factor and access-log security requirements, and the ingestion paths that
+need an AI provider.
+
+**How these counts are produced.** Not by hand. `docs/traceability.md` is parsed
+row by row — the grouped STO and CON rows expanded to their individual
+identifiers — and the totals above come from that count. The first version of
+this summary was estimated by eye and was wrong in four rows; it is worth saying
+so, because a traceability table nobody counts is a table that drifts.

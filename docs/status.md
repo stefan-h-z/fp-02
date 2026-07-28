@@ -5,8 +5,8 @@ Position of every work package in [`PLAN.md`](../PLAN.md) §6.
 **This tracks the plan, not the specification, and the two are not the same
 thing.** A work package can be finished while requirements it was meant to serve
 are still absent. [`traceability.md`](traceability.md) tracks the other axis —
-all 363 numbered requirements in `SPEC.md` — and its headline is that 33 are
-absent outright and 15 are half-built. Read it before treating a row below as a
+all 363 numbered requirements in `SPEC.md` — and its headline is that 20 are
+absent outright and 12 are half-built. Read it before treating a row below as a
 statement about the product.
 
 Legend: **done** — implemented and covered by tests that run in CI ·
@@ -15,8 +15,9 @@ Legend: **done** — implemented and covered by tests that run in CI ·
 **platform** — needs a native capability or a store/provider account.
 
 `pnpm check-types` and `pnpm lint` are hard-zero; `expo export --platform web`
-bundles the app. Tests: 645 under Vitest, plus 32 render tests under jest-expo
-(`pnpm --filter @fam/app test:render`).
+bundles the app. Tests run in three layers: 852 under Vitest, 45 render tests
+under jest-expo (`pnpm --filter @fam/app test:render`), and 18 steps in real
+Chromium against the real Laravel backend (`pnpm --filter @fam/app test:e2e`).
 
 The sync core has been through an adversarial review that reproduced sixteen
 defects with failing tests — three of them losing data — all since fixed and
@@ -216,6 +217,32 @@ how `@cp/ui` is consumed on web rather than anything in this app, and it is why
 the browser test asserts the theme class rather than a rendered colour: the
 assertion should fail when *this* code breaks, not when the design system's
 build does.
+
+**The browser layer found three defects nothing else could.** They are worth
+naming individually, because each was invisible to a suite that was otherwise
+green.
+
+`process.env["EXPO_PUBLIC_…"]` never reached the bundle. Expo's Babel transform
+inlines those variables by rewriting *member expressions*, and does not
+recognise the bracket form — so every web build ever produced here silently used
+the fallback API URL and no OAuth client id at all. Nothing but a browser
+talking to a real server could have shown it.
+
+Nothing ever wrote the `family` entity. The server relays operations and authors
+none, so an entity no device creates is an entity that never exists — and every
+family-scoped setting reads it and finds nothing. The learning switch was
+permanently disabled for every real family. It is now written on join, after the
+snapshot, idempotently.
+
+`List.Item` fires `onPress` only when it is also `pressable`. A row without it
+looks tappable and does nothing. The render test passed regardless, because
+`fireEvent.press` invokes the handler either way — a false green that only a
+real click could expose.
+
+The harness itself was the fourth: it served whatever `dist` happened to exist,
+so two fixes in a row were tested against a bundle that predated them. It now
+rebuilds when the baked-in client id does not match the running backend, or when
+any source file is newer than the bundle.
 
 **The design system is consumed through a link** to a checkout beside this
 repository, which installs locally but not in CI — hence the split CI, whose
