@@ -2,6 +2,13 @@
 
 Position of every work package in [`PLAN.md`](../PLAN.md) §6.
 
+**This tracks the plan, not the specification, and the two are not the same
+thing.** A work package can be finished while requirements it was meant to serve
+are still absent. [`traceability.md`](traceability.md) tracks the other axis —
+all 363 numbered requirements in `SPEC.md` — and its headline is that 33 are
+absent outright and 15 are half-built. Read it before treating a row below as a
+statement about the product.
+
 Legend: **done** — implemented and covered by tests that run in CI ·
 **partial** — the logic exists and is tested, a named part is missing ·
 **backend** — implemented in `backend-php-01`, not executable here (see below) ·
