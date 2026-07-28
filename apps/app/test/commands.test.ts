@@ -25,16 +25,15 @@ import {
   askAboutItem,
   checkOff,
   checkOffPlanned,
-  describeSyncStatus,
   dismissSuggestion,
   markCooked,
   planMeal,
   reportEmpty,
-  selectShoppingList,
   setAbsence,
   skipDose,
   unplanMeal,
-} from "@fam/app";
+} from "../src/commands.js";
+import { describeSyncStatus, selectShoppingList } from "../src/selectors.js";
 
 const FAMILY = "fam-1";
 const LIST = "list-groceries";
