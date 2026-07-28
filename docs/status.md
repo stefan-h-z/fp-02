@@ -27,7 +27,7 @@ convergence itself survived the attack.
 | 0.6 Conflict tiers | done | tier registry, conflict records, resolution that travels to every device; 5 property tests over randomized interleavings |
 | 0.7 Storage adapters | done | `StateStore` seam with three implementations — in-memory, SQL and IndexedDB — run through one equivalence suite; phones open the native SQLite driver, the browser opens IndexedDB, and four further tests assert that a reload keeps entities, meta, history and the unsent outbox. The wa-sqlite/OPFS route is deliberately not the one shipped (PLAN §3.3 fallback; see below) |
 | 0.8 Auth & family lifecycle | done | join by invitation, create a family, redeem a recovery code; the session persists in the local database and the shell boots straight into the family. Endpoints are in the backend module and unexercised |
-| 0.9 Push plumbing | backend | `notifications.ts` decides what to send; delivery is the platform's |
+| 0.9 Push plumbing | backend | `notifications.ts` decides what to send; `src/Notifications` in the module plans, budgets and delivers, scheduled every minute. Unexecuted |
 | 0.10 Legal baseline | done | access and portability bundles, erasure planning, consent gating, learning gates, retention |
 | 0.11 Phase-0 exit test | done | three devices, offline, lossless sync, snapshot bootstrap |
 
@@ -37,7 +37,7 @@ convergence itself survived the attack.
 |---|---|---|
 | 1.1 Shopping list core | done | one list per domain, store as a multi-valued item attribute, runtime grouping, global check-off, wishes, in-store questions |
 | 1.2 Staples engine | done | median rhythm, confidence, reported-beats-predicted, absence windows, dismissal damping, bounded ranking |
-| 1.3 AI gateway + voice inbox | partial | multi-item voice parsing in both languages and inbox triage are done and tested; the provider call is server-side by design (AI-01) |
+| 1.3 AI gateway + voice inbox | partial | multi-item voice parsing in both languages and inbox triage are done and tested here; the provider call is server-side by design (AI-01) and now exists as `src/AI` — provider-agnostic, defaulting to a fake so a missing key degrades to "no AI". Unexecuted |
 | 1.4 Recipes: structure & cooking | done | structured ingredients, unit normalization, scaling, per-person ratings, cook mode with parallel timers. Display-stays-on is a native capability (`expo-keep-awake`), left as a named TODO |
 | 1.5 Recipes: import pipeline | done | extraction from embedded structured data and ingredient parsing incl. fractions, ranges, German shorthand; duplicate detection. Fetching is backend |
 | 1.6 Meal plan | done | who eats, who cooks, non-recipe entries, needs derived rather than stored |
@@ -53,8 +53,8 @@ convergence itself survived the attack.
 | WP | Status | Where |
 |---|---|---|
 | 2.1 Calendar core | done | recurrence with per-instance exceptions, responsibility fields, travel buffers |
-| 2.2 Google + Microsoft two-way sync | partial | iCalendar in and out, and the reconciliation that decides what a connector does — echo suppression, both-sides-moved raised for a human, external deletion propagating inward — are built and tested here (SC-010 in the acceptance suite). OAuth and the provider APIs are backend |
-| 2.3 CalDAV/iCloud + ICS | partial | same; the published read-only feed is implemented |
+| 2.2 Google + Microsoft two-way sync | partial | iCalendar in and out, and the reconciliation that decides what a connector does — echo suppression, both-sides-moved raised for a human, external deletion propagating inward — are built and tested here (SC-010 in the acceptance suite). The OAuth flows and provider APIs now exist in `src/Calendar/Connectors`, polled every minute. Unexecuted, and live credentials are an ops step |
+| 2.3 CalDAV/iCloud + ICS | partial | same; the CalDAV and ICS-subscription connectors are in the module and the published read-only feed (FR-208) is served from `routes/public.php`, the URL itself being the credential. Unexecuted |
 | 2.4 Calendar intelligence | done | conflict detection including travel, care gaps, free slots, lead-time preparation |
 | 2.5 Tasks core | done | both recurrence modes, absence-aware rotation, delegation requiring acceptance, lead stages, blockers, owner escalation, symbolic stars |
 | 2.6 Mental load deck | done | distribution including planning work, unassigned cards, load spikes, meeting agenda, polls — no score anywhere |
@@ -66,8 +66,8 @@ convergence itself survived the attack.
 
 | WP | Status | Where |
 |---|---|---|
-| 3.1 Ingestion pipeline | partial | triage, rules and intent extraction are done; capture transports and the AI call are backend |
-| 3.2 Family email address | backend | inbound mail infrastructure |
+| 3.1 Ingestion pipeline | partial | triage, rules and intent extraction are done here; the capture transports and the AI call are in `src/AI` and `src/Mail`. Unexecuted |
+| 3.2 Family email address | backend | `src/Mail` plus the HMAC-verified webhook in `routes/public.php`; an empty signing secret refuses everything rather than accepting everything. Unexecuted, and the inbound provider is an ops step |
 | 3.3 External-source templates | done | product groups, task library, age-banded suggestions, task packs, packing and shopping templates |
 | 3.4 Documents & knowledge | done | expiry and notice deadlines with real lead times, full-text search, contacts, emergency binder |
 | 3.5 Health module + protocols | done | protocol engine and consent gating; both double-dose scenarios in the acceptance suite |
@@ -89,8 +89,16 @@ is not yet exercised.
 
 **Three transports are backend work by design**, not omissions: the AI provider
 call (SPEC AI-01 puts it server-side), the calendar providers' OAuth APIs, and
-inbound mail. In each case the *decisions* those transports must respect are
-implemented and tested here.
+inbound mail. All three are now written — `src/AI`, `src/Calendar/Connectors`,
+`src/Mail` — and share the caveat above: unexecuted. In each case the *decisions*
+those transports must respect are implemented and tested here, which is what
+makes them reviewable at all.
+
+What they still need from the outside world is credentials and a contract, not
+code: an AI provider whose processor agreement commits in writing to EU hosting,
+no training on family data and no retention of voice uploads (AI-02, AI-03,
+OBL-07 — `config/family.php` states this where an operator will see it), OAuth
+client registrations for Google and Microsoft, and an inbound-mail provider.
 
 **Two things need a native capability**: home-screen widgets and keeping the
 display awake in cook mode. Both are named TODOs rather than stubs.
