@@ -19,3 +19,4 @@ export * from "./calendar.js";
 export * from "./notifications.js";
 export * from "./inbox.js";
 export * from "./compliance.js";
+export * from "./documents.js";

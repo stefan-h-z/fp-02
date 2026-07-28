@@ -15,7 +15,7 @@ export type EntityType = string;
 const CRITICAL_FIELDS: Readonly<Record<EntityType, readonly string[]>> = {
   event: ["startsAt", "endsAt", "allDay", "recurrence", "cancelled"],
   protocolInstance: ["state", "acknowledgedBy", "acknowledgedAt", "measuredValue", "skipNote"],
-  task: ["ownerId", "dueAt", "completedAt", "state"],
+  task: ["ownerId", "dueAt", "completedAt", "state", "delegationResponse", "delegateId"],
   document: ["fileRef", "title", "expiresAt"],
   membership: ["role"],
   weekPlan: ["planningOwnerId"],

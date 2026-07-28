@@ -43,7 +43,7 @@ import {
  * §18 key entities, so they are not in `EntityTypes`. The store is type-agnostic,
  * which lets them live here until the schema registry is next touched.
  */
-export const POLL_ENTITY_TYPE = "poll";
+export const POLL_ENTITY_TYPE = EntityTypes.poll;
 
 export interface ResponsibilityCardNegotiation {
   readonly at: number;

@@ -29,6 +29,7 @@ export const EntityTypes = {
   event: "event",
   task: "task",
   responsibilityCard: "responsibilityCard",
+  poll: "poll",
   protocol: "protocol",
   protocolInstance: "protocolInstance",
   document: "document",
