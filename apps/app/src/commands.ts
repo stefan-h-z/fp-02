@@ -265,6 +265,191 @@ export async function setAbsence(
   );
 }
 
+/**
+ * What the family learned about a dish after cooking it (FR-536).
+ *
+ * Written on the recipe rather than on the meal slot, because the point of the
+ * note is the *next* time — a slot is gone by then.
+ */
+export async function noteAfterCooking(
+  mutate: Mutate,
+  input: { readonly recipeId: string; readonly note: string; readonly at: number },
+): Promise<void> {
+  await mutate((builder) =>
+    builder.set(EntityTypes.recipe, input.recipeId, {
+      nextTimeNote: input.note.trim(),
+      nextTimeNoteAt: input.at,
+    }),
+  );
+}
+
+/** One step of a routine, in the shape the task entity stores it. */
+export interface RoutineStepState {
+  readonly id: string;
+  readonly title: string;
+  readonly icon: string;
+  readonly done: boolean;
+}
+
+/**
+ * A child ticking off part of their routine (FR-1207).
+ *
+ * Subtasks live as one array field, so the whole sequence is rewritten. That is
+ * a last-writer-wins field, which is the right trade here: two people ticking the
+ * same child's routine at the same second is not a case worth a merge, and the
+ * child in front of the kitchen tablet must see their tick immediately.
+ *
+ * Completing the last step does not complete the task: a child's task carries an
+ * approval gate (FR-312), and silently closing it would take that away.
+ */
+export async function setRoutineStepDone(
+  mutate: Mutate,
+  input: {
+    readonly taskId: string;
+    readonly steps: readonly RoutineStepState[];
+    readonly stepId: string;
+    readonly done: boolean;
+  },
+): Promise<void> {
+  const next = input.steps.map((step) => ({
+    id: step.id,
+    title: step.title,
+    icon: step.icon,
+    done: step.id === input.stepId ? input.done : step.done,
+  }));
+
+  await mutate((builder) => builder.set(EntityTypes.task, input.taskId, { subtasks: next }));
+}
+
+/**
+ * The first question of onboarding, answered (FR-124).
+ *
+ * A person and their membership are created together: the person is the identity
+ * and the membership is what makes them part of *this* family (FR-105).
+ */
+export async function addFamilyMember(
+  mutate: Mutate,
+  input: {
+    readonly familyId: string;
+    readonly name: string;
+    readonly role: "adult" | "teen" | "child";
+  },
+): Promise<string> {
+  let personId = "";
+
+  await mutate((builder) => {
+    personId = builder.createNew(EntityTypes.person, { name: input.name.trim() });
+    builder.createNew(EntityTypes.membership, {
+      familyId: input.familyId,
+      personId,
+      role: input.role,
+    });
+  });
+
+  return personId;
+}
+
+/**
+ * The second question, answered: only that area is switched on (FR-125). The
+ * others appear when the family needs them, which is why this stores one area
+ * rather than a set of feature flags.
+ */
+export async function chooseStartArea(
+  mutate: Mutate,
+  input: { readonly familyId: string; readonly area: string },
+): Promise<void> {
+  await mutate((builder) => {
+    builder.set(EntityTypes.family, input.familyId, { activeArea: input.area });
+    builder.setAdd(EntityTypes.family, input.familyId, "enabledAreas", input.area);
+  });
+}
+
+/**
+ * Consent for the health module (FR-1407).
+ *
+ * Every grant is its own record, never an edit of an earlier one, because what
+ * was agreed, when, and in which policy version is the accountability evidence
+ * (FR-1410) — and evidence you overwrite is not evidence.
+ */
+export async function grantConsent(
+  mutate: Mutate,
+  input: {
+    readonly personId: string;
+    readonly subject: string;
+    readonly policyVersion: string;
+    readonly at: string;
+  },
+): Promise<string> {
+  let id = "";
+  await mutate((builder) => {
+    id = builder.createNew(EntityTypes.consent, {
+      personId: input.personId,
+      subject: input.subject,
+      policyVersion: input.policyVersion,
+      grantedAt: input.at,
+    });
+  });
+  return id;
+}
+
+/**
+ * Withdrawing consent (FR-1408): one tap, the same as granting. The record is
+ * stamped rather than deleted, for the same reason as above.
+ */
+export async function revokeConsent(
+  mutate: Mutate,
+  input: { readonly consentIds: readonly string[]; readonly at: string },
+): Promise<void> {
+  await mutate((builder) => {
+    for (const id of input.consentIds) {
+      builder.set(EntityTypes.consent, id, { revokedAt: input.at });
+    }
+  });
+}
+
+/**
+ * Carry out an erasure that was already shown to the person (FR-1414).
+ *
+ * The plan comes from `planErasure` and is applied verbatim, so what was on
+ * screen is what happens. Shared entries are kept and only the fields naming the
+ * person are cleared — a family calendar does not disappear because one member
+ * left (FR-1417a).
+ *
+ * TODO(WP-0.8): `plan.anonymizeAuthorship` cannot be honoured from a client —
+ * the actor on already-shipped operations lives in the server's log. The
+ * backend's erasure endpoint rewrites those to `ANONYMOUS_ACTOR`; this command
+ * covers the entity data only.
+ */
+export async function erasePersonalData(
+  mutate: Mutate,
+  plan: {
+    readonly deleteEntityRefs: readonly { readonly type: string; readonly id: string }[];
+    readonly clearFields: readonly { readonly type: string; readonly id: string; readonly field: string }[];
+    readonly removeSetMembers: readonly {
+      readonly type: string;
+      readonly id: string;
+      readonly field: string;
+      readonly member: string;
+    }[];
+  },
+): Promise<void> {
+  await mutate((builder) => {
+    for (const ref of plan.deleteEntityRefs) builder.delete(ref.type, ref.id);
+    for (const ref of plan.clearFields) builder.set(ref.type, ref.id, { [ref.field]: null });
+    for (const ref of plan.removeSetMembers) builder.setRemove(ref.type, ref.id, ref.field, ref.member);
+  });
+}
+
+/** Deleting the whole family, in the app, as the stores require (FR-1415). */
+export async function eraseFamilyData(
+  mutate: Mutate,
+  refs: readonly { readonly type: string; readonly id: string }[],
+): Promise<void> {
+  await mutate((builder) => {
+    for (const ref of refs) builder.delete(ref.type, ref.id);
+  });
+}
+
 /** Switching learning off must also forget what was learned (AI-06). */
 export async function setLearningEnabled(
   mutate: Mutate,

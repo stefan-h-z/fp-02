@@ -26,7 +26,17 @@ export const en = {
   "onboarding.joinWithCode": "Join with a code",
   "onboarding.recoveryCode.title": "Write this code down",
   "onboarding.recoveryCode.body":
-    "It is the only way back in if no other adult is around to approve a new device.",
+    "It is the only way back in if no other adult is around to approve a new device. Write it on paper now — the app cannot show it to you a second time.",
+  "onboarding.recoveryCode.pending": "The code is issued the moment the family is created on the server.",
+  "onboarding.recoveryCode.confirm": "I have written it down",
+  "onboarding.whoHint": "Names are enough. Everything else can wait.",
+  "onboarding.personName": "First name",
+  "onboarding.addPerson": "Add",
+  "onboarding.role.adult": "Adult",
+  "onboarding.role.teen": "Teen",
+  "onboarding.role.child": "Child",
+  "onboarding.continue": "Continue",
+  "onboarding.startHere": "Start here",
 
   "list.title": "Shopping",
   "list.section.reported": "Reported empty",
@@ -58,6 +68,27 @@ export const en = {
   "recipe.ingredients": "Ingredients",
   "recipe.steps": "Steps",
   "recipe.note": "Note for next time",
+
+  "cook.step": "Step {current} of {total}",
+  "cook.next": "Next",
+  "cook.previous": "Back",
+  "cook.startTimer": "Timer {minutes} min",
+  "cook.timerLeft": "{label}: {remaining} left",
+  "cook.timerDone": "{label} — time is up",
+  "cook.stopTimer": "Stop",
+  "cook.finish": "Finished cooking",
+  "cook.notePlaceholder": "Ten minutes shorter next time",
+  "cook.noSteps": "This recipe has no steps yet",
+
+  "routine.title": "Your routine",
+  "routine.progress": "{done} of {total} done",
+  "routine.allDone": "All done",
+  "routine.startTimer": "Start the timer",
+  "routine.timeLeft": "{remaining} left",
+  "routine.empty": "Nothing to tick off",
+
+  "myday.title": "What concerns me today",
+  "myday.nextThree": "The next three things",
 
   "calendar.today": "Today",
   "calendar.week": "Week",
@@ -106,6 +137,19 @@ export const en = {
   "privacy.healthConsentExplained":
     "Medication plans and readings are health data. They are only stored while this is switched on.",
   "privacy.aiNotice": "Voice and photo input is processed by an AI service in the EU.",
+  "privacy.exportExplained":
+    "Everything the app holds about you, in a format another program can read.",
+  "privacy.exportCount": "{count} entries",
+  "privacy.deleteExplained": "See what will happen first — deleting cannot be undone.",
+  "privacy.erasure.title": "What deleting does",
+  "privacy.erasure.deletes": "{count} entries that are only about you are deleted.",
+  "privacy.erasure.clears": "Your name is removed in {count} places.",
+  "privacy.erasure.shared":
+    "Shared entries — appointments, lists, recipes — stay with the family. Only the mark saying you wrote them is removed.",
+  "privacy.erasure.lastAdult": "You are the last adult, so the whole family is deleted with you.",
+  "privacy.erasure.confirm": "Delete for good",
+  "privacy.deleteFamilyExplained":
+    "This deletes everything for everyone, on every device. It cannot be undone.",
 
   "common.cancel": "Cancel",
   "common.save": "Save",
@@ -130,7 +174,17 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "onboarding.joinWithCode": "Mit Code beitreten",
   "onboarding.recoveryCode.title": "Diesen Code aufschreiben",
   "onboarding.recoveryCode.body":
-    "Er ist der einzige Weg zurück, wenn kein anderer Erwachsener ein neues Gerät freischalten kann.",
+    "Er ist der einzige Weg zurück, wenn kein anderer Erwachsener ein neues Gerät freischalten kann. Schreib ihn jetzt auf Papier — die App zeigt ihn kein zweites Mal.",
+  "onboarding.recoveryCode.pending": "Der Code entsteht, sobald die Familie auf dem Server angelegt ist.",
+  "onboarding.recoveryCode.confirm": "Ich habe ihn aufgeschrieben",
+  "onboarding.whoHint": "Namen reichen. Alles andere kann warten.",
+  "onboarding.personName": "Vorname",
+  "onboarding.addPerson": "Hinzufügen",
+  "onboarding.role.adult": "Erwachsen",
+  "onboarding.role.teen": "Jugendlich",
+  "onboarding.role.child": "Kind",
+  "onboarding.continue": "Weiter",
+  "onboarding.startHere": "Hier starten",
 
   "list.title": "Einkauf",
   "list.section.reported": "Ist alle",
@@ -162,6 +216,27 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "recipe.ingredients": "Zutaten",
   "recipe.steps": "Schritte",
   "recipe.note": "Notiz fürs nächste Mal",
+
+  "cook.step": "Schritt {current} von {total}",
+  "cook.next": "Weiter",
+  "cook.previous": "Zurück",
+  "cook.startTimer": "Timer {minutes} Min.",
+  "cook.timerLeft": "{label}: noch {remaining}",
+  "cook.timerDone": "{label} — die Zeit ist um",
+  "cook.stopTimer": "Stopp",
+  "cook.finish": "Fertig gekocht",
+  "cook.notePlaceholder": "Nächstes Mal zehn Minuten kürzer",
+  "cook.noSteps": "Dieses Rezept hat noch keine Schritte",
+
+  "routine.title": "Dein Ablauf",
+  "routine.progress": "{done} von {total} geschafft",
+  "routine.allDone": "Alles geschafft",
+  "routine.startTimer": "Timer starten",
+  "routine.timeLeft": "noch {remaining}",
+  "routine.empty": "Gerade nichts abzuhaken",
+
+  "myday.title": "Was mich heute betrifft",
+  "myday.nextThree": "Die nächsten drei Dinge",
 
   "calendar.today": "Heute",
   "calendar.week": "Woche",
@@ -210,6 +285,19 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "privacy.healthConsentExplained":
     "Medikamentenpläne und Messwerte sind Gesundheitsdaten. Sie werden nur gespeichert, solange das eingeschaltet ist.",
   "privacy.aiNotice": "Sprache und Fotos werden von einem KI-Dienst in der EU verarbeitet.",
+  "privacy.exportExplained":
+    "Alles, was die App über dich gespeichert hat, in einem Format, das andere Programme lesen können.",
+  "privacy.exportCount": "{count} Einträge",
+  "privacy.deleteExplained": "Sieh dir zuerst an, was passiert — Löschen lässt sich nicht rückgängig machen.",
+  "privacy.erasure.title": "Was das Löschen bewirkt",
+  "privacy.erasure.deletes": "{count} Einträge, die nur dich betreffen, werden gelöscht.",
+  "privacy.erasure.clears": "An {count} Stellen wird dein Name entfernt.",
+  "privacy.erasure.shared":
+    "Gemeinsame Einträge — Termine, Listen, Rezepte — bleiben bei der Familie. Nur der Vermerk, dass du sie geschrieben hast, verschwindet.",
+  "privacy.erasure.lastAdult": "Du bist der letzte Erwachsene, deshalb wird die ganze Familie mit gelöscht.",
+  "privacy.erasure.confirm": "Endgültig löschen",
+  "privacy.deleteFamilyExplained":
+    "Das löscht alles für alle, auf jedem Gerät. Es lässt sich nicht rückgängig machen.",
 
   "common.cancel": "Abbrechen",
   "common.save": "Speichern",

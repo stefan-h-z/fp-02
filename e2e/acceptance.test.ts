@@ -10,16 +10,21 @@ import {
   DAY_MS,
   EntityTypes,
   HOUR_MS,
+  buildIcs,
   buildShoppingList,
   canonicalItemKey,
   computeRhythm,
   derivePlannedNeeds,
   instanceId,
+  linkFor,
+  parseIcs,
   planInstances,
   readBoolean,
   readNumber,
   readProtocol,
   readString,
+  reconcile,
+  search,
 } from "@fam/domain";
 import { FAMILY_ID, FamilySimulation } from "./harness.js";
 
@@ -495,5 +500,85 @@ describe("cross-cutting guarantees", () => {
       expect(device.client.state().snapshot()).toEqual(reference);
     }
     expect(readBoolean(family.device("tablet-kitchen").client.state().get(EntityTypes.shoppingItem, "i-1"), "checked")).toBe(true);
+  });
+});
+
+describe("SPEC §3 — Phase 2 exit criterion", () => {
+  it("mirrors an external calendar in both directions without duplicating anything (SC-010)", async () => {
+    const family = await FamilySimulation.household();
+    const mum = family.device("phone-mum");
+
+    await mum.mutate((b) =>
+      b.create(EntityTypes.event, "e-dentist", {
+        title: "Dentist",
+        startsAt: Date.parse("2026-08-03T09:00:00Z"),
+        endsAt: Date.parse("2026-08-03T10:00:00Z"),
+        bringOwnerId: "person-mum",
+      }),
+    );
+    await family.settle();
+
+    // Out: the family's calendar is published as a feed.
+    const state = family.device("phone-dad").client.state();
+    const feed = buildIcs(state.all(EntityTypes.event), { calendarName: "Müller", now: family.now() });
+
+    // Back in: the external provider hands the same event back as a change.
+    const roundTripped = parseIcs(feed).events;
+    const local = state.all(EntityTypes.event).map((event) => ({
+      id: event.id,
+      title: readString(event, "title"),
+      startsAt: readNumber(event, "startsAt"),
+      endsAt: readNumber(event, "endsAt"),
+      allDay: false,
+      cancelled: false,
+      updatedAt: family.now(),
+    }));
+    const links = local.map((event) => linkFor(event, "acc-1", event.id, family.now()));
+
+    const echo = reconcile({
+      accountId: "acc-1",
+      direction: "two-way",
+      local,
+      remote: roundTripped,
+      links,
+      now: family.now(),
+    });
+
+    // The app recognises its own event and does nothing at all with it.
+    expect(echo.importCreate).toHaveLength(0);
+    expect(echo.importUpdate).toHaveLength(0);
+    expect(echo.exportUpdate).toHaveLength(0);
+    expect(echo.conflicts).toHaveLength(0);
+
+    // A genuine external move arrives once, as an update rather than a copy.
+    const moved = roundTripped.map((event) => ({ ...event, startsAt: event.startsAt + 2 * 60 * 60 * 1000 }));
+    const second = reconcile({
+      accountId: "acc-1",
+      direction: "two-way",
+      local,
+      remote: moved,
+      links,
+      now: family.now(),
+    });
+
+    expect(second.importCreate).toHaveLength(0);
+    expect(second.importUpdate).toHaveLength(1);
+  });
+
+  it("finds what somebody half-remembers, across every area at once (FR-1213)", async () => {
+    const family = await FamilySimulation.household();
+    await family.device("phone-mum").mutate((b) => {
+      b.create(EntityTypes.event, "e-swim", { title: "Swimming lesson", startsAt: family.now() + DAY_MS });
+      b.create(EntityTypes.task, "t-badge", { title: "Sew on the swimming badge", ownerId: "person-dad" });
+      b.create(EntityTypes.document, "d-letter", {
+        title: "Parent letter",
+        extractedText: "Please return the swimming permission slip",
+      });
+    });
+    await family.settle();
+
+    const hits = search(family.device("tablet-kitchen").client.state(), "swimming");
+
+    expect(new Set(hits.map((h) => h.kind))).toEqual(new Set(["event", "task", "document"]));
   });
 });
