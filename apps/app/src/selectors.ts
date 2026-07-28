@@ -347,16 +347,22 @@ export function selectRoutine(state: FamilyState, taskId: string): RoutineView |
  * Keyword matching rather than a curated list: routines are typed by parents in
  * their own words, and a wrong-but-stable picture is still something a child who
  * cannot read can navigate by (FR-103).
+ *
+ * Every name returned here must be registered — in `icons.ts` or built into the
+ * design system. An unregistered one does not fail loudly: it renders a
+ * placeholder behind a development warning, so a child's shoes step quietly
+ * becomes a grey box. `render-test/routine-icons.test.tsx` holds the two files
+ * to each other.
  */
 export function routineIcon(title: string): string {
   const text = title.toLowerCase();
   const table: readonly (readonly [readonly string[], string])[] = [
     [["teeth", "zähne", "zahn", "brush"], "toothbrush"],
     [["dress", "anziehen", "clothes", "kleid"], "shirt"],
-    [["shoe", "schuh"], "shoe"],
+    [["shoe", "schuh"], "shoes"],
     [["breakfast", "frühstück", "eat", "essen"], "utensils"],
     [["bag", "ranzen", "tasche", "school", "schule"], "backpack"],
-    [["wash", "waschen", "shower", "duschen"], "droplet"],
+    [["wash", "waschen", "shower", "duschen"], "bath"],
     [["bed", "bett", "sleep", "schlafen"], "moon"],
     [["book", "buch", "read", "lesen", "homework", "hausaufgab"], "book"],
     [["toy", "spielzeug", "tidy", "aufräum"], "package"],

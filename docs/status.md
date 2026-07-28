@@ -164,9 +164,17 @@ worth the worker.
 repository, which installs locally but not in CI — hence the split CI, whose
 `app` job is non-blocking until the packages are published.
 
-**Two routine glyphs are stand-ins.** The app registers the icons it needs
-through the design system's own `registerIcons` extension point
-(`apps/app/src/icons.ts`), and a render test now proves the registration takes —
-but lucide has no toothbrush or hairbrush, and a routine icon a four-year-old
-cannot recognise is worse than a generic one. Those two need real artwork before
-the kids' view ships (FR-1206).
+**The routine glyphs are drawn, and two more were missing entirely.** lucide has
+no toothbrush — its nearest offer is a painter's brush — so `toothbrush` and
+`hairbrush` are now hand-drawn in `apps/app/src/glyphs.tsx`, to lucide's own
+conventions (24×24, stroked, round caps, stroke width from the render site) so
+they sit beside the rest without looking borrowed.
+
+Writing the test that proves they draw turned up a separate defect of the same
+silent family as the icon-registration one: `routineIcon` returned `shoe` and
+`droplet`, while the app registers `shoes` and `bath`. Both fell through to the
+placeholder-plus-development-warning path, so a child's *shoes* and *wash* steps
+were grey boxes on the one screen that is navigated by picture alone (FR-1206).
+`render-test/routine-icons.test.tsx` now holds the mapping table and the
+registry to each other, and does the same for every glyph the screens name as a
+literal.

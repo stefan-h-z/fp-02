@@ -12,11 +12,11 @@
  */
 import { createElement } from "react";
 import { registerIcons, type IconComponent } from "@cp/ui";
+import { Hairbrush, Toothbrush } from "./glyphs.js";
 import {
   Backpack,
   Bath,
   BedDouble,
-  Brush,
   Calendar,
   Circle,
   CircleMinus,
@@ -48,10 +48,12 @@ function glyph(Source: LucideIcon): IconComponent {
 }
 
 /**
- * Kebab-case names, matching the design system's convention. The two flagged
- * below are stand-ins: lucide has no toothbrush or hairbrush, and a routine icon
- * a four-year-old cannot recognise is worse than a generic one, so this needs a
- * real glyph before the kids' view ships (SPEC FR-1206).
+ * Kebab-case names, matching the design system's convention.
+ *
+ * `toothbrush` and `hairbrush` are drawn in `glyphs.tsx` rather than taken from
+ * lucide, which has neither — its nearest offer is a painter's brush, and a
+ * routine icon a four-year-old cannot recognise is worse than a generic one
+ * (SPEC FR-1206).
  */
 const APP_ICONS: Readonly<Record<string, IconComponent>> = {
   // Protocols and health
@@ -75,8 +77,11 @@ const APP_ICONS: Readonly<Record<string, IconComponent>> = {
   bath: glyph(Bath),
   bed: glyph(BedDouble),
   shoes: glyph(Footprints),
-  toothbrush: glyph(Brush), // stand-in, see above
-  tidy: glyph(Sparkles), // stand-in, see above
+  toothbrush: Toothbrush,
+  hairbrush: Hairbrush,
+  // Not a stand-in: sparkles is what "tidied up" looks like, and a child reads
+  // it as the room being finished rather than as an object to fetch.
+  tidy: glyph(Sparkles),
 };
 
 let registered = false;
