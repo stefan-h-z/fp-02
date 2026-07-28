@@ -16,6 +16,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - name: Configure GitHub Packages auth
+        # The design-system packages (@cp/ui, @cp/tokens) come from GitHub
+        # Packages, published by the cp-testt1-09 release workflow. Until that
+        # workflow has run once, apps/app declares them as a `link:` to a local
+        # checkout and this job cannot install them — see docs/status.md.
         run: pnpm config set //npm.pkg.github.com/:_authToken "${{ secrets.GITHUB_TOKEN }}"
       - run: pnpm install --frozen-lockfile
       - name: Types (hard zero)

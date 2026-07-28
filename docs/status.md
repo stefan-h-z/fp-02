@@ -37,7 +37,7 @@ repository (store submission, live provider accounts).
 | 1.6 Meal plan | done | `plan.ts` + `commands.ts`: who eats, who cooks, non-recipe entries, and needs derived rather than stored |
 | 1.7 Decision relief | done | `suggest.ts`: explainable scoring, re-roll, emergency dishes, plan adherence |
 | 1.8 Notifications v1 | done | `notifications.ts`: budget with bundling, protocol exemption, opt-in quiet hours, role routing, owner escalation |
-| 1.9 Kiosk UX, widgets, my-day | partial | `selectors.ts` decides what each surface shows and the kiosk identity rule is tested; the surfaces themselves are screens |
+| 1.9 Kiosk UX, widgets, my-day | partial | `selectors.ts` decides what each surface shows and the kiosk identity rule is tested; the today screen renders it, widgets do not exist |
 | 1.10 Onboarding v1 | partial | the flow's decisions (area enablement, recovery code, invite carrying name and role) exist in `api` and `i18n`; the screens do not |
 | 1.11 Store prep, closed test | external | Play closed testing with real testers over 14 days |
 | 1.12 Phase-1 exit test | done | `e2e/acceptance.test.ts` — the whole weekly loop offline with two people ticking off at once |
