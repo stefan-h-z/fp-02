@@ -218,6 +218,145 @@ await step("dark mode follows the device", async () => {
   await page.emulateMedia({ colorScheme: "light" });
 });
 
+/**
+ * Past the join wall, which is where every earlier version of this harness
+ * stopped. Everything above proves a person can get in; these prove the app they
+ * got into is real — deep-linked routes render, the client-side router survives
+ * a cold load of a sub-path, and the screens draw against data this browser is
+ * holding in its own IndexedDB.
+ */
+async function openRoute(path) {
+  await page.goto(`${BASE_URL}${path}`, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => (document.body.innerText ?? "").trim().length > 0, undefined, {
+    timeout: 30_000,
+  });
+  const backOnJoin = await page.getByTestId("join-invite").count();
+  assert(backOnJoin === 0, `${path} bounced back to the join screen`);
+}
+
+await step("a deep-linked route renders rather than 404ing", async () => {
+  await openRoute("/calendar");
+  await page.getByTestId("calendar-month").waitFor({ timeout: 30_000 });
+});
+
+/**
+ * FR-206 in the browser. The render tests already prove the four views against a
+ * test renderer; what only a browser can say is that switching between them
+ * repaints — a screen whose state changes without the DOM following is a class
+ * of bug the test renderer cannot see, because it re-reads the tree either way.
+ */
+await step("the calendar switches between its four views", async () => {
+  await page.getByTestId("calendar-tab-agenda").click();
+  await page
+    .locator('[data-testid="calendar-agenda"], [data-testid="calendar-agenda-empty"]')
+    .first()
+    .waitFor({ timeout: 30_000 });
+  assert(
+    (await page.getByTestId("calendar-month").count()) === 0,
+    "the month grid was still on the page after switching to the agenda",
+  );
+
+  await page.getByTestId("calendar-tab-day").click();
+  await page
+    .locator('[data-testid="calendar-day"], [data-testid="calendar-day-empty"]')
+    .first()
+    .waitFor({ timeout: 30_000 });
+
+  await page.getByTestId("calendar-tab-timeline").click();
+  await page
+    .locator('[data-testid="calendar-timeline"], [data-testid="calendar-timeline-empty"]')
+    .first()
+    .waitFor({ timeout: 30_000 });
+
+  await page.getByTestId("calendar-tab-month").click();
+  await page.getByTestId("calendar-month").waitFor({ timeout: 30_000 });
+});
+
+await step("paging the calendar moves the window", async () => {
+  const monthLabel = async () => page.getByTestId("calendar-month").innerText();
+  const before = await monthLabel();
+
+  await page.getByTestId("calendar-next").click();
+  await page.waitForFunction(
+    (previous) => {
+      const node = document.querySelector('[data-testid="calendar-month"]');
+      return node !== null && node.innerText !== previous;
+    },
+    before,
+    { timeout: 30_000 },
+  );
+
+  const after = await monthLabel();
+  assert(after !== before, "paging forward left the same month on screen");
+});
+
+/**
+ * The screens a family actually opens. Each is loaded cold at its own URL rather
+ * than navigated to, because a client-routed app that only works when you arrive
+ * through the home page is broken for everybody who bookmarks anything.
+ */
+for (const [path, marker] of [
+  ["/", "body"],
+  ["/shopping", "body"],
+  ["/plan", "body"],
+  ["/settings", "privacy-learning"],
+  ["/my-day", "body"],
+  ["/conflicts", "body"],
+]) {
+  await step(`${path} loads cold and draws something`, async () => {
+    await openRoute(path);
+    if (marker === "body") {
+      const text = (await page.locator("body").innerText()).trim();
+      assert(text.length > 0, `${path} rendered an empty page`);
+    } else {
+      await page.getByTestId(marker).waitFor({ timeout: 30_000 });
+    }
+  });
+}
+
+/**
+ * A write, in a browser, that survives a reload.
+ *
+ * Everything above this point reads. This is the one that proves the whole loop
+ * closes on web: a tap produces an operation, the operation reaches IndexedDB,
+ * and a cold reload finds it there. The learning switch is the subject because
+ * it is a single visible boolean with no server round trip to confuse the
+ * result.
+ */
+await step("a setting changed in the browser survives a reload", async () => {
+  await openRoute("/settings");
+
+  // The design system nests the real control under `-input` — the same
+  // convention the invitation field follows. Clicking the outer wrapper hits a
+  // presentational box and toggles nothing.
+  const toggle = page.getByTestId("privacy-learning-input");
+  await toggle.waitFor({ timeout: 30_000 });
+
+  const readState = async () =>
+    page.evaluate(() => {
+      const node = document.querySelector('[data-testid="privacy-learning-input"]');
+      if (node === null) return "gone";
+      return node.getAttribute("aria-checked") ?? String(node.checked ?? "");
+    });
+
+  const before = await readState();
+  await toggle.click();
+  await page.waitForFunction(
+    (previous) => {
+      const node = document.querySelector('[data-testid="privacy-learning-input"]');
+      if (node === null) return false;
+      return (node.getAttribute("aria-checked") ?? String(node.checked ?? "")) !== previous;
+    },
+    before,
+    { timeout: 30_000 },
+  );
+
+  await openRoute("/settings");
+  await toggle.waitFor({ timeout: 30_000 });
+  const after = await readState();
+  assert(after !== before, `the switch went back to ${before} after a reload`);
+});
+
 await step("no console errors along the way", async () => {
   assert(problems.length === 0, problems.join("\n    "));
 });

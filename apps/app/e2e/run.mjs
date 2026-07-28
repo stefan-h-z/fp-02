@@ -23,7 +23,7 @@
  *   E2E_FILTER     substring filter on harness filenames
  *   E2E_HEADED     run with a visible browser
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
@@ -144,10 +144,101 @@ if (process.env.E2E_INVITE_TOKEN === undefined) {
 }
 
 // ── The web build ──────────────────────────────────────────────────────────
-if (process.env.E2E_BASE_URL === undefined) {
-  if (!existsSync(distDir)) {
-    console.error("[e2e] no dist/ — run `pnpm --filter @fam/app export:web` first.");
+/**
+ * Both the API URL and the OAuth client id are baked into the bundle at build
+ * time, so a `dist` built against a different database is silently wrong: every
+ * family call answers `app_context_missing`, and the browser shows "check the
+ * code and the connection" — which names everything except the cause. Rebuilding
+ * when the baked-in id does not match the running backend turns half an hour of
+ * confusion into forty seconds of Metro.
+ */
+function bundleCarries(clientId) {
+  if (clientId === undefined || clientId === "") return true;
+
+  // A half-written dist (an interrupted build) has no bundle directory at all,
+  // which counts as "does not carry it" rather than as a crash.
+  const bundleDir = join(distDir, "_expo/static/js/web");
+  if (!existsSync(bundleDir)) return false;
+
+  for (const name of readdirSync(bundleDir, { recursive: true })) {
+    const file = join(bundleDir, String(name));
+    if (!statSync(file).isFile()) continue;
+    if (readFileSync(file, "utf8").includes(clientId)) return true;
+  }
+  return false;
+}
+
+function buildBundle(clientId) {
+  console.log("[e2e] building the web bundle");
+  const result = spawnSync("pnpm", ["--filter", "@fam/app", "export:web"], {
+    cwd: join(appDir, "../.."),
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      EXPO_PUBLIC_API_URL: API_URL,
+      EXPO_PUBLIC_CLIENT_ID: clientId,
+    },
+  });
+
+  if (result.status !== 0) {
+    console.error("[e2e] the web build failed");
     process.exit(1);
+  }
+}
+
+/**
+ * The newest mtime under a source tree, so a bundle older than the code it was
+ * built from can be spotted. Without this the harness happily serves a stale
+ * `dist` and reports failures against code that no longer exists — which costs
+ * far more than the forty seconds a rebuild takes.
+ */
+function newestSourceTime() {
+  const roots = [
+    join(appDir, "src"),
+    join(appDir, "app"),
+    join(appDir, "../../packages"),
+  ];
+
+  let newest = 0;
+  for (const root of roots) {
+    if (!existsSync(root)) continue;
+    for (const name of readdirSync(root, { recursive: true })) {
+      const file = join(root, String(name));
+      if (file.includes("node_modules") || !existsSync(file)) continue;
+
+      const stat = statSync(file);
+      if (stat.isFile() && stat.mtimeMs > newest) newest = stat.mtimeMs;
+    }
+  }
+  return newest;
+}
+
+function bundleTime() {
+  const bundleDir = join(distDir, "_expo/static/js/web");
+  if (!existsSync(bundleDir)) return 0;
+
+  let newest = 0;
+  for (const name of readdirSync(bundleDir, { recursive: true })) {
+    const file = join(bundleDir, String(name));
+    if (!statSync(file).isFile()) continue;
+
+    const stat = statSync(file);
+    if (stat.mtimeMs > newest) newest = stat.mtimeMs;
+  }
+  return newest;
+}
+
+if (process.env.E2E_BASE_URL === undefined) {
+  const clientId = seeded["E2E_CLIENT_ID"];
+
+  if (!existsSync(distDir)) {
+    buildBundle(clientId);
+  } else if (!bundleCarries(clientId)) {
+    console.log("[e2e] dist/ was built against a different backend — rebuilding");
+    buildBundle(clientId);
+  } else if (bundleTime() < newestSourceTime()) {
+    console.log("[e2e] dist/ is older than the source — rebuilding");
+    buildBundle(clientId);
   }
 
   const server = createServer((request, response) => {

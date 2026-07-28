@@ -16,6 +16,7 @@ declare(strict_types=1);
  */
 
 use App\Domain\Apps\Models\PlatformApp;
+use Laravel\Passport\Client as OAuthClient;
 use Modules\Family\Models\Family;
 use Modules\Family\Models\FamilyInvite;
 use Modules\Family\Models\FamilyMembership;
@@ -57,6 +58,19 @@ FamilyInvite::query()->create([
     'expires_at' => now()->addDay(),
 ]);
 
+/*
+ * The OAuth client this app belongs to. A family device holds this module's own
+ * token rather than a platform one, so the client id has to travel in
+ * `X-Client-Id` — and it is baked into the browser bundle at build time. Printing
+ * it here lets the runner check the bundle it is about to serve was built
+ * against this database rather than a previous one; without that check a stale
+ * bundle fails at the join step with an `app_context_missing` that names
+ * everything except the actual cause.
+ */
+$client = OAuthClient::query()->where('app_id', $app->id)->first()
+    ?? OAuthClient::query()->first();
+
 // Parsed by e2e/run.mjs. One key per line, nothing else on it.
 echo "E2E_INVITE_TOKEN={$token}\n";
 echo "E2E_FAMILY_ID={$family->id}\n";
+echo 'E2E_CLIENT_ID=' . ($client?->getKey() ?? '') . "\n";

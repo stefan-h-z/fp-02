@@ -38,3 +38,4 @@ export * from "./shoppingDetails.js";
 export * from "./automation.js";
 export * from "./cooking.js";
 export * from "./childOnboarding.js";
+export * from "./calendarViews.js";

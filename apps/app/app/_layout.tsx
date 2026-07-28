@@ -15,6 +15,7 @@ import { useColorScheme } from "react-native";
 import { TamaguiProvider, Theme } from "@tamagui/core";
 import { tamaguiConfig } from "@cp/tokens";
 import { Alert, Button, Spinner } from "@cp/ui";
+import { EntityTypes } from "@fam/domain";
 import { SyncClient } from "@fam/sync";
 import type { StateStore } from "@fam/storage";
 import { AuthClient, HttpSyncTransport, type DeviceSession } from "@fam/api";
@@ -32,7 +33,13 @@ type TamaguiProviderConfig = NonNullable<ComponentProps<typeof TamaguiProvider>[
  * offline-first, so it works against the local store until a family is joined
  * and the address is known.
  */
-const API_BASE_URL = process.env["EXPO_PUBLIC_API_URL"] ?? "http://localhost:8000";
+// Dot access, not `process.env["…"]`. Expo's Babel transform inlines
+// `process.env.EXPO_PUBLIC_*` at build time by rewriting member expressions, and
+// it does not recognise the bracket form — which reads as `{}` in the browser,
+// so a bracketed lookup silently returns the fallback no matter what the build
+// was given. That is not a style preference; it is the difference between this
+// configuration existing and not.
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000";
 
 // Which OAuth client this build is. The platform reads the app off the access
 // token's client, but a family device holds this module's own token rather than
@@ -40,7 +47,7 @@ const API_BASE_URL = process.env["EXPO_PUBLIC_API_URL"] ?? "http://localhost:800
 // `app_context_missing`, including sync. It is per-deployment configuration,
 // not a secret: a public client id identifies the app, it does not authorise
 // anything on its own.
-const API_CLIENT_ID = process.env["EXPO_PUBLIC_CLIENT_ID"];
+const API_CLIENT_ID = process.env.EXPO_PUBLIC_CLIENT_ID;
 
 // Glyphs must be registered before anything renders, or the first paint shows
 // placeholders (see src/icons.ts).
@@ -127,6 +134,20 @@ export default function RootLayout(): ReactNode {
       // A device that has just joined holds nothing, so it takes the server's
       // materialized snapshot rather than replaying the family's whole history.
       await client.bootstrap().catch(() => undefined);
+
+      // The family itself has to exist as an entity, not only as a session id.
+      // The server is a relay for operations and never authors any, so if no
+      // device has written this one nothing ever will — and every family-scoped
+      // setting (the learning switch, the enabled areas, the meal rhythm) reads
+      // it and finds nothing. Written after the snapshot so an existing family
+      // is not overwritten, and idempotent through `set`.
+      if (client.state().get(EntityTypes.family, session.familyId) === undefined) {
+        await client
+          .mutate((b) => {
+            b.create(EntityTypes.family, session.familyId, { learningEnabled: true });
+          })
+          .catch(() => undefined);
+      }
 
       setActorId(session.personId);
       setRecoveryCode(code);
