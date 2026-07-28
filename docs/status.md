@@ -74,11 +74,21 @@ repository (store submission, live provider accounts).
 
 ## The two structural gaps
 
-**Screens.** The app's behaviour is implemented and tested in `apps/app`
-(commands and selectors); the React Native components that render it are not
-written. This was a deliberate stop: the component library they depend on is not
-published yet, and screens written blind against an uninstallable dependency could
-not have been verified here.
+**Screens.** Five screens exist — today, shopping, week plan, protocol and
+conflict resolution — bound to the tested command and selector layer and
+typechecked against the real prop types of `@cp/ui` (three API mismatches
+surfaced that way and were fixed). They are *not* render-tested, and the Expo
+shell around them (router, Tamagui provider, Metro config, entry point) is not
+wired, so the app cannot be launched yet. The remaining screens follow the same
+shape: read a selector, render it, call a command.
+
+Two consequences worth stating. The design-system packages are currently
+declared as a `link:` to a checkout of `cp-testt1-09` beside this repository,
+which installs locally but not in CI — the link must be replaced by the
+published `@cp/ui` and `@cp/tokens` versions once WP-0.2's release workflow has
+run. And the logic tests deliberately import the modules they test rather than
+the app's barrel, because pulling React Native into a Node test run is both slow
+and pointless.
 
 **The backend.** The family module for the Laravel platform lives in
 `backend-php-01`. Its dependencies could not be installed in this environment (the
