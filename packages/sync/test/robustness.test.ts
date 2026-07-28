@@ -226,3 +226,37 @@ describe("the sync indicator tells the truth (FR-1216)", () => {
     expect(client.hasUnsyncedWork()).toBe(false);
   });
 });
+
+/**
+ * The client publishes state to React through `useSyncExternalStore`, which
+ * compares the snapshot it is handed against the previous one with `Object.is`
+ * and skips the re-render when they match. A client that applies an operation to
+ * the state object a screen is already holding therefore satisfies every
+ * assertion about its own contents while showing the person nothing — and
+ * offline, the screen changing is the only confirmation a tick ever gets.
+ */
+describe("a local change is visible, not merely recorded (FR-731, FR-1214)", () => {
+  it("publishes a new state object for a local mutation", async () => {
+    const { client } = await device("phone-a");
+    const before = client.state();
+
+    await client.mutate((b) => b.create(EntityTypes.shoppingItem, "i-1", { name: "Milk" }));
+
+    const after = client.state();
+    expect(after).not.toBe(before);
+    expect(after.get(EntityTypes.shoppingItem, "i-1")?.fields["name"]).toBe("Milk");
+  });
+
+  /**
+   * The snapshot handed out earlier must not change underneath its holder
+   * either: that is the other half of what makes the comparison meaningful.
+   */
+  it("leaves the previous snapshot as it was", async () => {
+    const { client } = await device("phone-a");
+    const before = client.state();
+
+    await client.mutate((b) => b.create(EntityTypes.shoppingItem, "i-1", { name: "Milk" }));
+
+    expect(before.get(EntityTypes.shoppingItem, "i-1")).toBeUndefined();
+  });
+});

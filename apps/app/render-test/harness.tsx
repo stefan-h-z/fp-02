@@ -74,3 +74,20 @@ export function mount(harness: Harness, screen: ReactElement): RenderResult {
     </TamaguiProvider>,
   );
 }
+
+/**
+ * Commands are async and screens re-render from a subscription, so an assertion
+ * straight after a press races the write. Polling the client's own state is the
+ * honest wait: it asserts the effect reached the model, which is the thing that
+ * matters, rather than that a label repainted.
+ */
+export async function waitForState(
+  harness: Harness,
+  predicate: (state: ReturnType<SyncClient["state"]>) => boolean,
+): Promise<void> {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    if (predicate(harness.client.state())) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error("the expected state never arrived");
+}

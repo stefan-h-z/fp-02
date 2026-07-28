@@ -177,10 +177,20 @@ export class SyncClient {
 
     await this.store.enqueueOutbox(ops);
     await this.persistClock();
+
+    // Onto a copy, and then swapped in — not applied in place. Subscribers
+    // compare snapshots by identity (`useSyncExternalStore` does exactly that),
+    // so mutating the object a screen is already holding notifies it of a
+    // change it cannot see: the state is right, the tick never appears, and
+    // offline there is nothing else to tell the person it counted. The clone
+    // costs what `rebuildVisible` already costs on every pull.
+    const next = this.visible.clone();
     for (const op of ops) {
       this.pending.set(op.opId, op);
-      this.visible.apply(op);
+      next.apply(op);
     }
+    this.visible = next;
+
     this.emit();
     return ops;
   }
