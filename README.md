@@ -92,4 +92,6 @@ described accurately:
   the DSA trader declaration, developer verification) are organizational steps
   outside this repository.
 
-See `docs/status.md` for the work-package-by-work-package position.
+See `docs/status.md` for the work-package-by-work-package position, and
+`docs/operations.md` for the steps that have to happen outside a repository
+before any of this reaches a family.
