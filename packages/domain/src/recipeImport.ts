@@ -345,3 +345,96 @@ export function isDuplicateOf(
   const shared = existingKeys.filter((key) => candidateKeys.has(key)).length;
   return shared / Math.max(candidateKeys.size, existingKeys.length) >= 0.6;
 }
+
+/**
+ * A recipe typed or pasted as plain text (FR-505).
+ *
+ * The path somebody takes when the recipe came from a grandmother, a
+ * WhatsApp message, or their own memory — no markup, no structured data,
+ * nothing to parse but the shape people already write recipes in.
+ *
+ * That shape is more reliable than it looks. Ingredients come first and are
+ * short lines that start with a quantity; steps come after and are sentences.
+ * A heading called "Zutaten" or "Ingredients" is treated as authoritative when
+ * present, and inferred from line shape when it is not — which is the case that
+ * actually matters, because a person typing from memory does not write
+ * headings.
+ *
+ * Nothing here fails: the worst outcome is a recipe whose ingredients ended up
+ * in the steps, which a person can see and fix. Refusing to import would leave
+ * them retyping it.
+ */
+export function importRecipeFromText(text: string, sourceUrl?: string): ImportOutcome {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[-*•·]\s*/, "").trim())
+    .filter((line) => line.length > 0);
+
+  if (lines.length === 0) return { ok: false, reason: "unreadable" };
+
+  const title = lines[0] ?? "";
+  let rest = lines.slice(1);
+
+  const servings = readServings(rest);
+  const ingredientHeading = rest.findIndex((line) => INGREDIENT_HEADING.test(line));
+  const stepHeading = rest.findIndex((line) => STEP_HEADING.test(line));
+
+  let ingredientLines: string[];
+  let stepLines: string[];
+
+  if (ingredientHeading !== -1 || stepHeading !== -1) {
+    const from = ingredientHeading === -1 ? 0 : ingredientHeading + 1;
+    const to = stepHeading === -1 ? rest.length : stepHeading;
+    ingredientLines = rest.slice(from, Math.max(from, to));
+    stepLines = stepHeading === -1 ? [] : rest.slice(stepHeading + 1);
+  } else {
+    // No headings: the first run of ingredient-shaped lines is the list, and
+    // everything from the first sentence onwards is method.
+    const firstStep = rest.findIndex((line) => !looksLikeIngredient(line));
+    ingredientLines = firstStep === -1 ? rest : rest.slice(0, firstStep);
+    stepLines = firstStep === -1 ? [] : rest.slice(firstStep);
+  }
+
+  rest = [];
+
+  return {
+    ok: true,
+    recipe: {
+      title,
+      servings,
+      ingredients: ingredientLines
+        .filter((line) => !SERVINGS.test(line))
+        .map((line) => parseIngredientLine(line)),
+      steps: stepLines.map((line) => line.replace(/^\d+[.)]\s*/, "")),
+      totalMinutes: undefined,
+      imageUrl: undefined,
+      sourceUrl,
+      author: undefined,
+    },
+  };
+}
+
+const INGREDIENT_HEADING = /^(zutaten|ingredients)\b/i;
+const STEP_HEADING = /^(zubereitung|anleitung|schritte|method|instructions|directions|steps)\b/i;
+const SERVINGS = /(f(ü|ue)r\s+(\d+)|(\d+)\s*(portionen|personen|servings|serves))/i;
+
+function readServings(lines: readonly string[]): number | undefined {
+  for (const line of lines) {
+    const match = SERVINGS.exec(line);
+    if (match === null) continue;
+    const value = Number(match[3] ?? match[4]);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return undefined;
+}
+
+/**
+ * Short, and starts with a quantity or a bare noun. A step is a sentence — it
+ * contains a verb and, in practice, far more words.
+ */
+function looksLikeIngredient(line: string): boolean {
+  if (line.length > 60) return false;
+  if (/[.!?]\s/.test(line)) return false;
+  if (/^\d+[.)]\s/.test(line)) return false;
+  return /^[\d½¼¾⅓⅔]/.test(line) || line.split(/\s+/).length <= 4;
+}

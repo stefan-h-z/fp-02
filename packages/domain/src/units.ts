@@ -159,3 +159,70 @@ export function scaleQuantity(quantity: NormalizedQuantity, factor: number): Nor
   }
   return { ...quantity, canonicalAmount: scaled };
 }
+
+// ── Oven temperatures (FR-533) ────────────────────────────────────────────
+
+/**
+ * Convection is not a unit, it is a different oven.
+ *
+ * Recipes are written for one and cooked in the other, and the rule of thumb
+ * every German cookbook prints — twenty degrees lower with the fan on — is the
+ * one thing a person at the hob actually needs. It is a rule of thumb and is
+ * labelled as one: ovens differ, and this is a starting point rather than a
+ * promise.
+ */
+export const CONVECTION_OFFSET_C = 20;
+
+export type OvenMode = "conventional" | "convection";
+
+export interface OvenTemperature {
+  readonly celsius: number;
+  readonly mode: OvenMode;
+}
+
+export function toConvection(celsius: number): number {
+  return celsius - CONVECTION_OFFSET_C;
+}
+
+export function toConventional(celsius: number): number {
+  return celsius + CONVECTION_OFFSET_C;
+}
+
+/** Rounded to the nearest 5 °C, because no oven dial is finer than that. */
+export function convertOven(temperature: OvenTemperature, to: OvenMode): OvenTemperature {
+  if (temperature.mode === to) return temperature;
+
+  const celsius =
+    to === "convection" ? toConvection(temperature.celsius) : toConventional(temperature.celsius);
+  return { celsius: Math.round(celsius / 5) * 5, mode: to };
+}
+
+export function celsiusToFahrenheit(celsius: number): number {
+  return Math.round((celsius * 9) / 5 + 32);
+}
+
+export function fahrenheitToCelsius(fahrenheit: number): number {
+  return Math.round(((fahrenheit - 32) * 5) / 9);
+}
+
+/**
+ * Finds an oven temperature in a step's text, so cook mode can offer the
+ * conversion instead of asking the person to do arithmetic with wet hands.
+ * Returns `undefined` rather than guessing when there is no temperature.
+ */
+export function readOvenTemperature(text: string): OvenTemperature | undefined {
+  const celsius = /(\d{2,3})\s*°?\s*C\b/i.exec(text);
+  if (celsius !== null) {
+    const value = Number(celsius[1]);
+    return {
+      celsius: value,
+      mode: /umluft|convection|fan/i.test(text) ? "convection" : "conventional",
+    };
+  }
+
+  const fahrenheit = /(\d{3})\s*°?\s*F\b/i.exec(text);
+  if (fahrenheit !== null) {
+    return { celsius: fahrenheitToCelsius(Number(fahrenheit[1])), mode: "conventional" };
+  }
+  return undefined;
+}

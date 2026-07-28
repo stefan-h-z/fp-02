@@ -143,7 +143,7 @@ describe("exclusion search (FR-518)", () => {
   });
 
   it("excludes nothing when asked to exclude nothing", () => {
-    expect(recipesWithout(withRecipes(), { exclude: [] }).sort()).toEqual(["r-cake", "r-soup"]);
+    expect([...recipesWithout(withRecipes(), { exclude: [] })].sort()).toEqual(["r-cake", "r-soup"]);
   });
 });
 

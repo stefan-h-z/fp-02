@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   importRecipeFromHtml,
+  importRecipeFromText,
   importRecipeFromJsonLd,
   isDuplicateOf,
   parseIngredientLine,
@@ -201,5 +202,91 @@ describe("duplicate detection (FR-509)", () => {
 
   it("does not confuse two different recipes", () => {
     expect(isDuplicateOf(recipe, { title: "Lasagne", ingredientNames: ["onions", "minced beef"] })).toBe(false);
+  });
+});
+
+/**
+ * The path somebody takes when the recipe came from a grandmother, a message,
+ * or their own memory (FR-505). There is no markup to lean on — only the shape
+ * people already write recipes in.
+ */
+describe("importing a recipe from plain text (FR-505)", () => {
+  it("reads the German shape, with headings", () => {
+    const result = importRecipeFromText(
+      [
+        "Omas Kartoffelsuppe",
+        "Für 4 Personen",
+        "Zutaten",
+        "500 g Kartoffeln",
+        "2 Karotten",
+        "1 EL Butter",
+        "Zubereitung",
+        "Kartoffeln schälen und würfeln.",
+        "Alles 20 Minuten köcheln lassen.",
+      ].join("\n"),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.recipe.title).toBe("Omas Kartoffelsuppe");
+    expect(result.recipe.servings).toBe(4);
+    expect(result.recipe.ingredients.map((i) => i.name)).toEqual([
+      "Kartoffeln",
+      "Karotten",
+      "Butter",
+    ]);
+    expect(result.recipe.ingredients[0]?.amount).toBe(500);
+    expect(result.recipe.steps).toHaveLength(2);
+  });
+
+  /**
+   * The case that actually matters: somebody typing from memory writes no
+   * headings at all. Ingredients are short lines starting with a quantity; a
+   * step is a sentence.
+   */
+  it("infers the split from line shape when there are no headings", () => {
+    const result = importRecipeFromText(
+      [
+        "Pancakes",
+        "200 g flour",
+        "2 eggs",
+        "300 ml milk",
+        "Whisk everything together and let it rest for ten minutes.",
+        "Fry in a hot pan until golden.",
+      ].join("\n"),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.recipe.ingredients.map((i) => i.name)).toEqual(["flour", "eggs", "milk"]);
+    expect(result.recipe.steps).toHaveLength(2);
+    expect(result.recipe.steps[0]).toMatch(/^Whisk/);
+  });
+
+  it("strips bullets and step numbering", () => {
+    const result = importRecipeFromText(
+      ["Salad", "- 2 tomatoes", "• 1 cucumber", "Method", "1. Chop everything.", "2) Toss."].join("\n"),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.recipe.ingredients.map((i) => i.name)).toEqual(["tomatoes", "cucumber"]);
+    expect(result.recipe.steps).toEqual(["Chop everything.", "Toss."]);
+  });
+
+  /** Empty input is the one thing it cannot make a recipe out of. */
+  it("refuses only when there is nothing at all", () => {
+    expect(importRecipeFromText("   \n  \n ").ok).toBe(false);
+  });
+
+  it("keeps the source when there is one", () => {
+    const result = importRecipeFromText("Toast\n2 slices bread", "https://example.test/toast");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.recipe.sourceUrl).toBe("https://example.test/toast");
   });
 });
