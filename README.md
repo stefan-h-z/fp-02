@@ -13,7 +13,7 @@ visible owner, and the anticipating is done by the system rather than by a perso
 packages/
   domain/    Pure product logic. No I/O, no UI, no framework.
   sync/      The offline-first sync engine: protocol, client, reference server.
-  storage/   One StateStore seam; in-memory, SQL, and per-platform drivers.
+  storage/   One StateStore seam; in-memory, SQL and IndexedDB behind it.
   api/       HTTP transport to the backend, plus the passwordless auth client.
   i18n/      German and English catalogs and locale-aware formatting.
 apps/

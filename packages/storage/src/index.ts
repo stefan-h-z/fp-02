@@ -2,6 +2,7 @@ export * from "./types.js";
 export * from "./driver.js";
 export * from "./memory.js";
 export * from "./sql-store.js";
+export * from "./indexeddb.js";
 // Both platform drivers are import-free (they take an already-opened handle), so
 // re-exporting them costs nothing on either platform.
 export * from "./drivers/expo-sqlite.js";

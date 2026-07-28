@@ -25,7 +25,7 @@ convergence itself survived the attack.
 | 0.4 Domain core | done | ids, HLC, operations, field tiers, reducer, state |
 | 0.5 Sync engine | done | protocol, client, reference server |
 | 0.6 Conflict tiers | done | tier registry, conflict records, resolution that travels to every device; 5 property tests over randomized interleavings |
-| 0.7 Storage adapters | partial | `StateStore` seam, in-memory and SQL implementations with 22 equivalence tests; the app opens the native SQLite driver on iOS/Android. wa-sqlite on OPFS needs the single-writer SharedWorker (PLAN §3.3), so the web build still runs in memory rather than pretending to persist |
+| 0.7 Storage adapters | done | `StateStore` seam with three implementations — in-memory, SQL and IndexedDB — run through one equivalence suite; phones open the native SQLite driver, the browser opens IndexedDB, and four further tests assert that a reload keeps entities, meta, history and the unsent outbox. The wa-sqlite/OPFS route is deliberately not the one shipped (PLAN §3.3 fallback; see below) |
 | 0.8 Auth & family lifecycle | done | join by invitation, create a family, redeem a recovery code; the session persists in the local database and the shell boots straight into the family. Endpoints are in the backend module and unexercised |
 | 0.9 Push plumbing | backend | `notifications.ts` decides what to send; delivery is the platform's |
 | 0.10 Legal baseline | done | access and portability bundles, erasure planning, consent gating, learning gates, retention |
@@ -102,9 +102,16 @@ achieve — it is a jest-preset-shaped problem, not a config line. The screens d
 typecheck against the design system's real prop types, and `expo export` proves
 they bundle. A proper render harness is a follow-up worth doing.
 
-**The web build does not persist yet.** wa-sqlite on OPFS needs a SharedWorker
-to enforce a single writer across tabs; until that is wired the browser runs in
-memory, which is stated in `apps/app/src/storage.ts` rather than hidden.
+**The web build persists through IndexedDB, not wa-sqlite.** This is the
+fallback PLAN §3.3 named for WP-0.7, and it was taken on the merits rather than
+as a retreat: OPFS access handles are exclusive, so a second tab does not queue
+behind the first, it fails — which is why that route needs a SharedWorker owning
+one connection for the whole origin. IndexedDB transactions are already atomic
+across tabs, so the shipped arrangement has one fewer moving part. The cost is
+that `IndexedDbStateStore` implements the seam directly instead of reusing
+`SqlStateStore`, which is why it is in the equivalence suite. The wa-sqlite
+driver stays in the tree behind the same interface should the SQL route ever be
+worth the worker.
 
 **The design system is consumed through a link** to a checkout beside this
 repository, which installs locally but not in CI — hence the split CI, whose

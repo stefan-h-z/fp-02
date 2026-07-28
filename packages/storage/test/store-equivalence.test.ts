@@ -1,12 +1,14 @@
 /**
- * One test body, both stores.
+ * One test body, every store.
  *
- * The whole architecture leans on the two implementations being
- * indistinguishable: the simulation harness and the convergence property tests
- * run against `MemoryStateStore`, while devices run `SqlStateStore`. Anything
- * asserted here is a promise the SQL layer makes to those tests.
+ * The whole architecture leans on the implementations being indistinguishable:
+ * the simulation harness and the convergence property tests run against
+ * `MemoryStateStore`, phones run `SqlStateStore`, and the browser runs
+ * `IndexedDbStateStore`. Anything asserted here is a promise those layers make
+ * to those tests.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { IDBFactory } from "fake-indexeddb";
 import {
   applyOperation,
   emptyEntity,
@@ -21,6 +23,7 @@ import {
   type Value,
 } from "@fam/domain";
 import {
+  IndexedDbStateStore,
   MemoryStateStore,
   META_LAST_SEQ,
   SqlStateStore,
@@ -130,6 +133,12 @@ const implementations = [
   {
     name: "SqlStateStore over better-sqlite3 :memory:",
     open: (): StateStore => new SqlStateStore(new BetterSqlite3Driver()),
+  },
+  {
+    // A fresh factory per store, so one test's database cannot leak into the
+    // next — a real browser gives each origin exactly one, which is the point.
+    name: "IndexedDbStateStore",
+    open: (): StateStore => new IndexedDbStateStore({ factory: new IDBFactory() }),
   },
 ];
 

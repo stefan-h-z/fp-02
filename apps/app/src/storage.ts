@@ -13,6 +13,7 @@
  */
 import {
   ExpoSqliteDriver,
+  IndexedDbStateStore,
   MemoryStateStore,
   SqlStateStore,
   type ExpoSqliteDatabase,
@@ -49,10 +50,28 @@ async function openNative(): Promise<StateStore | undefined> {
 async function openWeb(): Promise<StateStore | undefined> {
   if (Platform.OS !== "web") return undefined;
 
-  // wa-sqlite on OPFS needs a single-writer arrangement (a SharedWorker) that is
-  // not wired yet — see PLAN.md §3.3 and docs/status.md. Until it is, the web
-  // build runs in memory rather than pretending to persist.
-  return undefined;
+  // IndexedDB rather than wa-sqlite on OPFS, which is the fallback PLAN §3.3
+  // names: OPFS access handles are exclusive, so that route needs a SharedWorker
+  // owning one connection for the whole origin before a second tab is safe.
+  // IndexedDB transactions are already atomic across tabs, so this arrangement
+  // has one fewer moving part and persists today.
+  if (globalThis.indexedDB === undefined) {
+    // Private-mode browsers and old WebViews. Memory keeps the app usable.
+    console.warn("[family] IndexedDB unavailable, falling back to memory");
+    return undefined;
+  }
+
+  try {
+    const store = new IndexedDbStateStore({ databaseName: DATABASE_NAME });
+    // Opened here rather than left to the caller so a browser that refuses the
+    // database — a storage quota denied, a blocked upgrade — falls back to
+    // memory instead of failing the app's boot. `init()` is idempotent.
+    await store.init();
+    return store;
+  } catch (error) {
+    console.warn("[family] IndexedDB could not be opened, falling back to memory", error);
+    return undefined;
+  }
 }
 
 /**
