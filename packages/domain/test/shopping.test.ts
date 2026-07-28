@@ -168,7 +168,7 @@ describe("plan to list (SPEC SC-004)", () => {
     seedRecipe(state, "r-pasta", "Pasta", 2, [{ name: "Pasta", amount: 200, unit: "g" }]);
     seedMealSlot(state, "slot-mon", "r-pasta", ["p-mum", "p-dad"]);
     const key = plannedNeedKey("week-1", "pasta");
-    state.apply(op("entity.create", EntityTypes.shoppingItem, key, { listId: LIST, checked: true }));
+    state.apply(op("entity.create", EntityTypes.plannedTick, key, { listId: LIST, checked: true }));
 
     state.apply(op("entity.setFields", EntityTypes.recipe, "r-pasta", {
       title: "Pasta",

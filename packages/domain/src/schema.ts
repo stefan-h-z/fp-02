@@ -21,6 +21,8 @@ export const EntityTypes = {
   store: "store",
   shoppingList: "shoppingList",
   shoppingItem: "shoppingItem",
+  /** The check-off of a derived planned need — see `plan.ts`. */
+  plannedTick: "plannedTick",
   recipe: "recipe",
   weekPlan: "weekPlan",
   mealSlot: "mealSlot",

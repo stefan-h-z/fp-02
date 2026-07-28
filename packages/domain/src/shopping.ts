@@ -152,7 +152,7 @@ function plannedLines(state: FamilyState, options: BuildListOptions): readonly L
     .filter((need) => !manualKeys.has(need.itemKey))
     .map((need) => {
       const catalog = state.get(EntityTypes.catalogItem, need.itemKey);
-      const tick = state.get(EntityTypes.shoppingItem, need.key);
+      const tick = state.get(EntityTypes.plannedTick, need.key);
 
       return {
         id: need.key,

@@ -150,8 +150,11 @@ export interface SuggestionRanking {
 export function rankSuggestions(rhythms: readonly Rhythm[], visibleLimit = 5): SuggestionRanking {
   const reported = rhythms.filter((r) => r.reported).sort(byItemKey);
 
+  // Only what is actually due belongs in the list. "Due soon" is a state the UI
+  // may hint at, but showing it here would resurrect an item the moment after
+  // somebody dismissed it, which is exactly what FR-742 rules out.
   const candidates = rhythms
-    .filter((r) => !r.reported && (r.state === "due" || r.state === "overdue" || r.state === "due-soon"))
+    .filter((r) => !r.reported && (r.state === "due" || r.state === "overdue"))
     .sort((a, b) => {
       const score = suggestionScore(b) - suggestionScore(a);
       return score !== 0 ? score : byItemKey(a, b);
