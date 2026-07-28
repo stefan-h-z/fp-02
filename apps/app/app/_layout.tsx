@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { Slot } from "expo-router";
+import { useColorScheme } from "react-native";
 import { TamaguiProvider, Theme } from "@tamagui/core";
 import { tamaguiConfig } from "@cp/tokens";
 import { Alert, Button, Spinner } from "@cp/ui";
@@ -59,6 +60,12 @@ export default function RootLayout(): ReactNode {
   // no navigator mounted and `router.push` throws. The legal texts have to be
   // reachable at exactly that moment (FR-1401), so the shell swaps them in.
   const [showLegal, setShowLegal] = useState(false);
+
+  // FR-1211. The device's own setting decides, rather than a switch of ours:
+  // somebody who set their phone to dark did so for a reason — often eyesight
+  // or a dark bedroom at 3am with a sick child — and asking them to say it
+  // twice is asking them to say it once too often.
+  const scheme = useColorScheme() === "dark" ? "dark" : "light";
   const [auth] = useState(
     () =>
       new AuthClient({
@@ -133,8 +140,8 @@ export default function RootLayout(): ReactNode {
     // a sibling checkout: two copies of @tamagui/web are installed, so their
     // config types are structurally identical but nominally distinct. It goes
     // away once @cp/tokens is installed from the registry (docs/status.md).
-    <TamaguiProvider config={tamaguiConfig as unknown as TamaguiProviderConfig} defaultTheme="light">
-      <Theme name="light">
+    <TamaguiProvider config={tamaguiConfig as unknown as TamaguiProviderConfig} defaultTheme={scheme}>
+      <Theme name={scheme}>
         {ready === undefined ? (
           <Spinner />
         ) : ready.client === undefined ? (

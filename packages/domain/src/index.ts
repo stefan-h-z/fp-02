@@ -30,3 +30,4 @@ export * from "./search.js";
 export * from "./scheduling.js";
 export * from "./legal.js";
 export * from "./health.js";
+export * from "./people.js";
