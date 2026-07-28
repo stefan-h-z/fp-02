@@ -8,12 +8,20 @@ Legend: **done** — implemented and covered by tests that run in CI ·
 **platform** — needs a native capability or a store/provider account.
 
 `pnpm check-types` and `pnpm lint` are hard-zero; `expo export --platform web`
-bundles the app.
+bundles the app. Tests: 645 under Vitest, plus 32 render tests under jest-expo
+(`pnpm --filter @fam/app test:render`).
 
 The sync core has been through an adversarial review that reproduced sixteen
 defects with failing tests — three of them losing data — all since fixed and
 pinned by regressions in `packages/sync/test/robustness.test.ts`. Replica
 convergence itself survived the attack.
+
+The render harness then found three more that no state assertion could reach,
+because all three were about what a person *sees*: every icon silently rejected
+at registration, local changes never repainting the screen, and two routine
+glyph names that resolved to nothing. The pattern is worth naming — each failed
+into a placeholder or a no-op rather than an error, which is exactly the class of
+defect a green suite hides.
 
 ## Phase 0 — Foundation
 
@@ -38,7 +46,7 @@ convergence itself survived the attack.
 | 1.1 Shopping list core | done | one list per domain, store as a multi-valued item attribute, runtime grouping, global check-off, wishes, in-store questions |
 | 1.2 Staples engine | done | median rhythm, confidence, reported-beats-predicted, absence windows, dismissal damping, bounded ranking |
 | 1.3 AI gateway + voice inbox | partial | multi-item voice parsing in both languages and inbox triage are done and tested here; the provider call is server-side by design (AI-01) and now exists as `src/AI` — provider-agnostic, defaulting to a fake so a missing key degrades to "no AI". Unexecuted |
-| 1.4 Recipes: structure & cooking | done | structured ingredients, unit normalization, scaling, per-person ratings, cook mode with parallel timers. Display-stays-on is a native capability (`expo-keep-awake`), left as a named TODO |
+| 1.4 Recipes: structure & cooking | done | structured ingredients, unit normalization, scaling, per-person ratings, cook mode with parallel timers, and the display held awake for as long as cook mode is open (`expo-keep-awake`, FR-527) |
 | 1.5 Recipes: import pipeline | done | extraction from embedded structured data and ingredient parsing incl. fractions, ranges, German shorthand; duplicate detection. Fetching is backend |
 | 1.6 Meal plan | done | who eats, who cooks, non-recipe entries, needs derived rather than stored |
 | 1.7 Decision relief | done | explainable scoring, re-roll, emergency dishes, plan adherence |
