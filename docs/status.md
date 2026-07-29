@@ -222,40 +222,44 @@ that `IndexedDbStateStore` implements the seam directly instead of reusing
 driver stays in the tree behind the same interface should the SQL route ever be
 worth the worker.
 
-**Light and dark paint identically in the app; Storybook is unaffected.** Both
-halves of that sentence are measured, and the second one narrows the search a
-long way.
+**The web build painted the light theme on a dark device, and the cause was
+`web.output: "static"`.** Found by measuring rather than reasoning, after two
+wrong diagnoses; both are recorded below because the wrong ones cost more than
+the right one.
 
-Measured on the app's settings screen, switching the emulated device theme: the
-five text colours are *identical* in both themes — `rgb(17,24,39)`,
-`rgb(75,85,99)`, `rgb(107,114,128)` and so on, which are the **light** theme's
-gray900 / gray600 / gray500, rendered in dark mode too. One of 91 sampled
-elements changes anything at all.
+The chain above any piece of text on a dark device read:
 
-The same measurement against Storybook (`cp-testt1-09/apps/storybook/e2e/
-theme-paint-probe.mjs`, kept as the reference number) says text goes from gray900
-to gray50, 7 of 122 elements change, and the document carries 90 rules consuming
-a CSS variable against the app's 73. **So the design system renders its themes
-correctly on web.** The gap is in how the app consumes it.
+    t_dark @ body  →  t_light @ span  →  the text
 
-Two explanations were tested and neither survived, which is worth recording so
-nobody spends the afternoon again:
+Expo's static rendering pre-renders the HTML at build time, where no device is
+attached and `useColorScheme()` therefore answers light. That bakes a
+`<span class="t_light is_Theme">` into `index.html`. On a dark device the body
+correctly became `t_dark` — and that span, still inside it, put the light theme
+back for everything below. A light island in a dark tree, so `--textPrimary`
+resolved to gray900 and every screen rendered the light palette.
 
-- *"The CSS custom properties come out empty."* They do not. `--background`
-  resolves to `#FFFFFF` under a light device and `#030712` under a dark one. The
-  original measurement read them off `documentElement`, where they are not
-  declared — they live on the elements carrying `.t_light` / `.t_dark`.
-- *"A second copy of `@tamagui/web` never saw `createTamagui`."* Structurally
-  plausible — pnpm does resolve two copies, and the design system's own Storybook
-  dedupes exactly that pair with a comment describing this failure. But pinning
-  it as a Metro singleton changes nothing measurable: 91 sampled, 1 repainted,
-  before and after. Reverted.
+Storybook was never affected because it does not pre-render.
 
-What has *not* been tested: Storybook aliases `@cp/ui` to its **source**
-(`packages/ui/src/index.ts`) while the app resolves it to its **`dist`**, built
-with plain `tsc`. That is the largest remaining structural difference between the
-two pipelines, and it is where the next attempt should start. It is a hypothesis,
-not a diagnosis.
+`web.output` is now `"single"`. All eighteen browser steps pass, deep-linked
+routes included — the static server already falls back to `index.html`, which is
+what any real host needs for a client-routed app. The trade-off is per-route
+pre-rendered HTML, which this product does not use: every screen is behind a
+join wall, so there is nothing to pre-render for a crawler and nothing gained on
+first paint.
+
+The browser step now asserts what actually matters — that no light theme appears
+nested inside a dark one, and that text paints differently — and it was confirmed
+to fail against `"static"` before being kept. Asserting the theme *class* alone,
+which is what it did before, passed for the whole time this was broken.
+
+Two diagnoses were wrong on the way, and are worth recording:
+
+- *"The CSS custom properties come out empty."* They are not. `--background`
+  resolves correctly on the element that carries the theme class; the original
+  measurement read it off `documentElement`, where it is not declared.
+- *"A second copy of `@tamagui/web` never saw `createTamagui`."* The bundle
+  contains exactly one definition of its theme-CSS generator. Pinning it as a
+  Metro singleton moved nothing, and was reverted.
 
 **The browser layer found three defects nothing else could.** They are worth
 naming individually, because each was invisible to a suite that was otherwise

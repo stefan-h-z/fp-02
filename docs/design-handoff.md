@@ -123,28 +123,26 @@ These look like taste and are requirements.
 
 ---
 
-## 4. Read this before you choose a palette
+## 4. Colour works — and here is what nearly stopped it
 
-**Storybook paints the theme correctly. The app does not.** That split is
-measured, and it decides where you can trust what you see.
+Nothing blocks colour work. Both themes render correctly in the app and in
+Storybook, and a token change is visible in both.
 
-In Storybook, switching the theme takes text from gray900 to gray50 — the
-semantic swap, working. In the app, the settings screen renders the *same five*
-text colours in both themes, all of them the light theme's values. One of 91
-elements changes anything.
+Worth knowing, because it shaped the tests you will be measured against: until
+recently the app painted the light palette on a dark device. Expo's static
+rendering pre-renders HTML at build time with no device attached, so
+`useColorScheme()` answered light and a `<span class="t_light">` was baked into
+`index.html`; on a dark device the body turned dark and that span put the light
+theme back for everything below. `web.output` is `"single"` now, and the browser
+suite asserts that no light theme is ever nested inside a dark one.
 
-For you this means:
+What this means for a redesign:
 
-- **Storybook is the source of visual truth.** Design there, review there.
-- **The app cannot be used to judge colour** until its packaging is fixed. That
-  is an engineering task with an open diagnosis — two explanations have already
-  been tested and disproved (see `status.md`), so treat any estimate with
-  suspicion until the cause is actually found.
-- Tier A work (semantic tokens) is still perfectly reviewable, because Storybook
-  renders it. Only the final in-app verification is blocked.
-
-`cp-testt1-09/apps/storybook/e2e/theme-paint-probe.mjs` is the reference
-measurement. Re-run it to check whether anything has moved.
+- **Both themes must be delivered.** Dark mode is a token swap, not a
+  derivation — `semantic/dark-theme.ts` is a first-class deliverable, not an
+  afterthought computed from the light one.
+- `cp-testt1-09/apps/storybook/e2e/theme-paint-probe.mjs` measures whether a
+  theme actually reaches the screen. Re-run it if something looks wrong.
 
 ---
 

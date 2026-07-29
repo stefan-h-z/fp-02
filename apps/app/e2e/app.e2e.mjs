@@ -189,13 +189,18 @@ await step("the browser really persisted something", async () => {
  * reason this code cannot fix and would hide the thing it can.
  */
 await step("dark mode follows the device", async () => {
-  const themeClasses = async () =>
+  const themeChain = async () =>
     page.evaluate(() => {
-      const found = new Set();
-      for (const el of Array.from(document.querySelectorAll("*")).slice(0, 300)) {
-        for (const name of Array.from(el.classList)) if (/^t_(light|dark)$/.test(name)) found.add(name);
+      const node = Array.from(document.querySelectorAll("div,span,p,button")).find(
+        (n) => n.children.length === 0 && (n.textContent ?? "").trim().length > 3,
+      );
+      const chain = [];
+      for (let n = node; n; n = n.parentElement) {
+        for (const name of Array.from(n.classList)) {
+          if (/^t_(light|dark)$/.test(name)) chain.unshift(name);
+        }
       }
-      return [...found].sort().join(",");
+      return { chain, colour: node ? getComputedStyle(node).color : "" };
     });
 
   const settle = async () => {
@@ -207,14 +212,38 @@ await step("dark mode follows the device", async () => {
 
   await page.emulateMedia({ colorScheme: "light" });
   await settle();
-  const light = await themeClasses();
+  const light = await themeChain();
 
   await page.emulateMedia({ colorScheme: "dark" });
   await settle();
-  const dark = await themeClasses();
+  const dark = await themeChain();
 
-  assert(!light.includes("t_dark"), `a light device rendered the dark theme: ${light}`);
-  assert(dark.includes("t_dark"), `a dark device did not render the dark theme: ${dark}`);
+  assert(!light.chain.includes("t_dark"), `a light device rendered the dark theme: ${light.chain}`);
+  assert(dark.chain.includes("t_dark"), `a dark device did not render the dark theme: ${dark.chain}`);
+
+  /*
+   * The half that matters, and the half that was missing for months.
+   *
+   * Asserting the theme class alone passed the whole time text rendered the
+   * light palette on a dark device. The cause was `web.output: "static"`: the
+   * pre-rendered HTML is built with no device attached, so `useColorScheme()`
+   * answered light and a `<span class="t_light">` was baked into it. On a dark
+   * device the body became `t_dark` and that span, still inside it, put the
+   * light theme back for everything below — a light island in a dark tree.
+   *
+   * The chain is asserted rather than a colour so a redesign cannot break this
+   * test by changing the palette. What it must never do is let a light theme
+   * reappear underneath a dark one.
+   */
+  assert(
+    !dark.chain.includes("t_light"),
+    `a light theme was nested inside the dark one: ${dark.chain.join(" > ")}`,
+  );
+  assert(
+    light.colour !== dark.colour,
+    `text painted the same in both themes: ${light.colour}`,
+  );
+
   await page.emulateMedia({ colorScheme: "light" });
 });
 
