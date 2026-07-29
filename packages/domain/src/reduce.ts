@@ -123,14 +123,22 @@ function applyFields(base: StoredEntity, op: Operation, isCreate: boolean): Redu
         // authorship that survives must be the one that happened first in real
         // time, not the one whose device reached the server first (SPEC §12.2
         // acceptance 2), so an earlier stamp displaces a later one.
+        //
         // The version deliberately does NOT advance here. It counts value
         // changes, so that replaying the log — which happens after any
-        // interrupted pull — lands on identical state. Advancing it would make
-        // a second application differ from the first, and replay idempotency is
-        // worth more than making the conflict count independent of push order:
-        // base versions are optimistic concurrency, and being order-sensitive is
-        // what they are for.
-        if (previous !== undefined && hlcLater(previous.hlc, op.hlc)) {
+        // interrupted pull — lands on identical state.
+        //
+        // `raced` is what makes that true, and it is not decoration. Matching
+        // values are not evidence of having reached the destination together:
+        // on a replay every operation's value matches the final state, so an
+        // operation that was *refused* as a conflict the first time round would
+        // come back and claim the authorship it lost. What actually identifies
+        // a co-author is the version it wrote against — one behind the write
+        // that currently holds the field is a genuine race; anything else is a
+        // coincidence of values.
+        const raced = baseVersion + 1 === currentVersion;
+
+        if (raced && previous !== undefined && hlcLater(previous.hlc, op.hlc)) {
           entity = {
             ...entity,
             meta: { ...entity.meta, [field]: { ...previous, hlc: op.hlc, actorId: op.actorId } },

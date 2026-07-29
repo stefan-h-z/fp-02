@@ -219,6 +219,47 @@ describe("reducer — Tier 2 (never overwrites silently)", () => {
     expect(state.get("protocolInstance", "dose-1")?.meta["state"]?.actorId).toBe("person-mum");
   });
 
+  /**
+   * A refused write must not collect the authorship it lost when the log is
+   * replayed — and replay happens after every interrupted pull.
+   *
+   * The three operations below are the shrunk counterexample from the
+   * convergence property, made deterministic. Device 1 writes 12:00 twice
+   * against a stale base; the first of those is refused as a conflict because
+   * the field still says 08:00, and the second wins the field legitimately.
+   *
+   * On a second pass the field already says 12:00, so the refused operation's
+   * value now matches by coincidence. That used to be enough to take the
+   * "same destination reached twice" path and pull authorship back to a write
+   * nobody accepted — the stamp went backwards, 274 to 137, on nothing more
+   * than replaying a log the state was already built from.
+   */
+  it("does not let a refused write reclaim authorship when the log is replayed", () => {
+    const log = [
+      op("entity.setFields", "event", "event-1", { startsAt: "2026-08-01T08:00:00Z" }, {
+        base: { startsAt: 0 }, deviceId: "device-0", actorId: "person-dad", wall: 411,
+      }),
+      op("entity.setFields", "event", "event-1", { startsAt: "2026-08-01T12:00:00Z" }, {
+        base: { startsAt: 0 }, deviceId: "device-1", actorId: "person-mum", wall: 137,
+      }),
+      op("entity.setFields", "event", "event-1", { startsAt: "2026-08-01T12:00:00Z" }, {
+        base: { startsAt: 1 }, deviceId: "device-1", actorId: "person-mum", wall: 274,
+      }),
+    ];
+
+    const once = new FamilyState();
+    once.applyAll(log);
+
+    const twice = new FamilyState();
+    twice.applyAll(log);
+    twice.applyAll(log);
+
+    expect(twice.snapshot()).toEqual(once.snapshot());
+    // The write that actually won the field, not the one that was refused.
+    expect(once.get("event", "event-1")?.meta["startsAt"]?.hlc.wall).toBe(274);
+    expect(twice.get("event", "event-1")?.meta["startsAt"]?.hlc.wall).toBe(274);
+  });
+
   it("credits the dose to whoever gave it first, even when their device synced second", () => {
     const state = new FamilyState();
     state.apply(op("entity.create", "protocolInstance", "dose-1", { state: "due" }));
