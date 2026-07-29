@@ -16,7 +16,7 @@ Legend: **done** — implemented and covered by tests that run in CI ·
 **platform** — needs a native capability or a store/provider account.
 
 `pnpm check-types` and `pnpm lint` are hard-zero; `expo export --platform web`
-bundles the app. Tests run in three layers: 852 under Vitest, 45 render tests
+bundles the app. Tests run in three layers: 864 under Vitest, 45 render tests
 under jest-expo (`pnpm --filter @fam/app test:render`), and 18 steps in real
 Chromium against the real Laravel backend (`pnpm --filter @fam/app test:e2e`).
 
@@ -258,6 +258,44 @@ The harness itself was the fourth: it served whatever `dist` happened to exist,
 so two fixes in a row were tested against a bundle that predated them. It now
 rebuilds when the baked-in client id does not match the running backend, or when
 any source file is newer than the bundle.
+
+**An adversarial review of this session's own modules found six more.** They
+are grouped by what made each one invisible, because that is the reusable part.
+
+*A property test that was allowed to keep running.* The convergence property
+"applying the log twice changes nothing" was failing about one run in twelve.
+The rule that decides who gets credit when two parents reach the same value
+identified a co-author by value equality — and after a log has been applied once,
+*every* operation's value matches the final state, so an operation refused as a
+conflict came back on the second pass and claimed the authorship it lost. A
+co-author is identified by the version it wrote against now. Sixteen
+hand-written cases in an earlier review had not found this.
+
+*A safety feature whose comment claimed the opposite of its code.* The kids'
+cook-mode matcher searched raw substrings, so `hot` inside "a shot of espresso"
+marked innocent steps dangerous, while cut, peel, grate, microwave and drain
+were not on the list at all — "Cut the apple in half" passed as a step a
+seven-year-old could own. Word-prefix matching and a much longer list.
+
+*Masking done in the views instead of the model.* Day and agenda checked
+`private` before printing a title; the month cell did not, so a therapy
+appointment was legible in the grid (FR-203). It is one function in the domain
+now, where a screen cannot forget it.
+
+*Reading people from the wrong shape.* `isVisibleTo` looked for the subjects of
+an entity in scalar fields and lists, but an event stores participants in an
+observed-remove set — so a separated parent could not see their own child's
+shared swimming lesson (FR-104).
+
+*A test that compared an implementation to itself.* Four of `bulkPayload`'s five
+writes were inert: wrong field names (`assigneeId` where readers want `ownerId`),
+wrong types (ISO strings where `readNumber` reads them), and a `deletedAt` field
+nothing in the library has ever read. A bulk edit of twenty tasks reported twenty
+and changed none. The test asserted the returned object equalled itself, and it
+did. It now applies each write through real operations and reads it back.
+
+*Arithmetic that assumed a shape the shop does not have.* `runningTotal` rounded
+quantities to whole items, so 2.6 kg at 1.00 rang up as 3.00.
 
 **The design system is consumed through a link** to a checkout beside this
 repository, which installs locally but not in CI — hence the split CI, whose
