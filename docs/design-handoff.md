@@ -125,26 +125,26 @@ These look like taste and are requirements.
 
 ## 4. Read this before you choose a palette
 
-**Light and dark currently paint identically in the web build.** Not because the
-palette is wrong — because nothing consumes it.
+**Storybook paints the theme correctly. The app does not.** That split is
+measured, and it decides where you can trust what you see.
 
-Measured in the running app: the theme variables are present and correct
-(`--background` is `#FFFFFF` under a light device, `#030712` under a dark one),
-and the class on the tree switches as it should. But `tamaguiConfig.getCSS()`
-returns eight variable blocks and zero style rules — there is no
-`color: var(--…)` in it at all — so sampling every element on a screen finds 0
-of 32 painting differently between the themes. The rules that would consume the
-variables are emitted by Tamagui's optimizing compiler, and no compiler runs in
-this pipeline.
+In Storybook, switching the theme takes text from gray900 to gray50 — the
+semantic swap, working. In the app, the settings screen renders the *same five*
+text colours in both themes, all of them the light theme's values. One of 91
+elements changes anything.
 
-Consequences for you:
+For you this means:
 
-- **Colour work cannot be evaluated in the app until this is fixed**, and the fix
-  is an engineering task: wire the Tamagui compiler into the Metro build. It is a
-  change to how the design system is packaged for every consumer.
-- Verify whether Storybook is affected before treating it as the source of visual
-  truth. It uses no Tamagui Vite plugin either, so it may have the same gap.
-- If colour is central to the brief, say so and this gets scheduled first.
+- **Storybook is the source of visual truth.** Design there, review there.
+- **The app cannot be used to judge colour** until its packaging is fixed. That
+  is an engineering task with an open diagnosis — two explanations have already
+  been tested and disproved (see `status.md`), so treat any estimate with
+  suspicion until the cause is actually found.
+- Tier A work (semantic tokens) is still perfectly reviewable, because Storybook
+  renders it. Only the final in-app verification is blocked.
+
+`cp-testt1-09/apps/storybook/e2e/theme-paint-probe.mjs` is the reference
+measurement. Re-run it to check whether anything has moved.
 
 ---
 

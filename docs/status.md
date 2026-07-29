@@ -222,32 +222,40 @@ that `IndexedDbStateStore` implements the seam directly instead of reusing
 driver stays in the tree behind the same interface should the SQL route ever be
 worth the worker.
 
-**Light and dark paint identically on web, and the reason is not the one this
-document gave until now.** The earlier note said the theme's CSS custom
-properties "come out empty" from `expo export`. They do not. Measured in the
-running app: `--background` resolves to `#FFFFFF` under a light device and
-`#030712` under a dark one, and the eight blocks that declare the theme
-variables are present in the document. The original measurement read them off
-`documentElement`, where they are not declared — they live on the elements
-carrying `.t_light` / `.t_dark`.
+**Light and dark paint identically in the app; Storybook is unaffected.** Both
+halves of that sentence are measured, and the second one narrows the search a
+long way.
 
-What is actually missing is the other half. `tamaguiConfig.getCSS()` returns
-sixteen blocks: eight theme-variable blocks and **zero** style rules. There is no
-`color: var(--…)` anywhere in it. So the variables are defined and correct, and
-nothing consumes them — sampling every element on a screen finds 0 of 32 painting
-differently between the two themes, with text at the browser default black and
-every surface transparent.
+Measured on the app's settings screen, switching the emulated device theme: the
+five text colours are *identical* in both themes — `rgb(17,24,39)`,
+`rgb(75,85,99)`, `rgb(107,114,128)` and so on, which are the **light** theme's
+gray900 / gray600 / gray500, rendered in dark mode too. One of 91 sampled
+elements changes anything at all.
 
-Those consuming rules are what Tamagui's optimizing compiler emits, and no
-compiler runs in this pipeline: neither `@tamagui/babel-plugin` nor
-`@tamagui/static` nor a Metro plugin is installed in either repository, and
-Storybook's Vite setup does not use one either — it only dedupes `@tamagui/core`.
+The same measurement against Storybook (`cp-testt1-09/apps/storybook/e2e/
+theme-paint-probe.mjs`, kept as the reference number) says text goes from gray900
+to gray50, 7 of 122 elements change, and the document carries 90 rules consuming
+a CSS variable against the app's 73. **So the design system renders its themes
+correctly on web.** The gap is in how the app consumes it.
 
-Injecting `getCSS()` at runtime does not help, and this was tried and reverted
-rather than reasoned about: it adds the eight variable blocks the runtime already
-provides, and the browser suite passed identically with the injection commented
-out. The fix is to run the compiler in the build, which is a change to how the
-design system is packaged for every consumer, not a change to this app.
+Two explanations were tested and neither survived, which is worth recording so
+nobody spends the afternoon again:
+
+- *"The CSS custom properties come out empty."* They do not. `--background`
+  resolves to `#FFFFFF` under a light device and `#030712` under a dark one. The
+  original measurement read them off `documentElement`, where they are not
+  declared — they live on the elements carrying `.t_light` / `.t_dark`.
+- *"A second copy of `@tamagui/web` never saw `createTamagui`."* Structurally
+  plausible — pnpm does resolve two copies, and the design system's own Storybook
+  dedupes exactly that pair with a comment describing this failure. But pinning
+  it as a Metro singleton changes nothing measurable: 91 sampled, 1 repainted,
+  before and after. Reverted.
+
+What has *not* been tested: Storybook aliases `@cp/ui` to its **source**
+(`packages/ui/src/index.ts`) while the app resolves it to its **`dist`**, built
+with plain `tsc`. That is the largest remaining structural difference between the
+two pipelines, and it is where the next attempt should start. It is a hypothesis,
+not a diagnosis.
 
 **The browser layer found three defects nothing else could.** They are worth
 naming individually, because each was invisible to a suite that was otherwise
