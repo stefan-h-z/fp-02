@@ -222,16 +222,32 @@ that `IndexedDbStateStore` implements the seam directly instead of reusing
 driver stays in the tree behind the same interface should the SQL route ever be
 worth the worker.
 
-**The design system's theme colours are not in the web export.** Dark mode is
-wired and verified — the browser suite emulates a dark device and asserts the
-tree comes out marked `t_dark` — but the CSS custom properties behind those
-classes (`--t-color` and friends) come out empty from `expo export`, so both
-themes currently paint the same colours. Tamagui normally emits that CSS from a
-compiler plugin the Metro export does not run. It is a packaging question about
-how `@cp/ui` is consumed on web rather than anything in this app, and it is why
-the browser test asserts the theme class rather than a rendered colour: the
-assertion should fail when *this* code breaks, not when the design system's
-build does.
+**Light and dark paint identically on web, and the reason is not the one this
+document gave until now.** The earlier note said the theme's CSS custom
+properties "come out empty" from `expo export`. They do not. Measured in the
+running app: `--background` resolves to `#FFFFFF` under a light device and
+`#030712` under a dark one, and the eight blocks that declare the theme
+variables are present in the document. The original measurement read them off
+`documentElement`, where they are not declared — they live on the elements
+carrying `.t_light` / `.t_dark`.
+
+What is actually missing is the other half. `tamaguiConfig.getCSS()` returns
+sixteen blocks: eight theme-variable blocks and **zero** style rules. There is no
+`color: var(--…)` anywhere in it. So the variables are defined and correct, and
+nothing consumes them — sampling every element on a screen finds 0 of 32 painting
+differently between the two themes, with text at the browser default black and
+every surface transparent.
+
+Those consuming rules are what Tamagui's optimizing compiler emits, and no
+compiler runs in this pipeline: neither `@tamagui/babel-plugin` nor
+`@tamagui/static` nor a Metro plugin is installed in either repository, and
+Storybook's Vite setup does not use one either — it only dedupes `@tamagui/core`.
+
+Injecting `getCSS()` at runtime does not help, and this was tried and reverted
+rather than reasoned about: it adds the eight variable blocks the runtime already
+provides, and the browser suite passed identically with the injection commented
+out. The fix is to run the compiler in the build, which is a change to how the
+design system is packaged for every consumer, not a change to this app.
 
 **The browser layer found three defects nothing else could.** They are worth
 naming individually, because each was invisible to a suite that was otherwise

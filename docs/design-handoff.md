@@ -125,19 +125,26 @@ These look like taste and are requirements.
 
 ## 4. Read this before you choose a palette
 
-**The design system's theme colours do not currently reach the web build.**
-Tamagui emits its CSS custom properties from a compiler plugin that the Expo
-Metro export does not run, so `--t-color` and friends come out empty and light
-and dark paint identically in the browser. The theme *class* is applied
-correctly — this is a packaging gap in how `@cp/ui` is consumed on web, not a bug
-in the app.
+**Light and dark currently paint identically in the web build.** Not because the
+palette is wrong — because nothing consumes it.
+
+Measured in the running app: the theme variables are present and correct
+(`--background` is `#FFFFFF` under a light device, `#030712` under a dark one),
+and the class on the tree switches as it should. But `tamaguiConfig.getCSS()`
+returns eight variable blocks and zero style rules — there is no
+`color: var(--…)` in it at all — so sampling every element on a screen finds 0
+of 32 painting differently between the themes. The rules that would consume the
+variables are emitted by Tamagui's optimizing compiler, and no compiler runs in
+this pipeline.
 
 Consequences for you:
 
-- A colour redesign cannot be evaluated in the exported web app until this is
-  fixed. Storybook is unaffected — use it as the source of visual truth.
-- If colour is central to the brief, **this should be fixed first**, and it is an
-  engineering task, not a design one. Say so and it will be scheduled.
+- **Colour work cannot be evaluated in the app until this is fixed**, and the fix
+  is an engineering task: wire the Tamagui compiler into the Metro build. It is a
+  change to how the design system is packaged for every consumer.
+- Verify whether Storybook is affected before treating it as the source of visual
+  truth. It uses no Tamagui Vite plugin either, so it may have the same gap.
+- If colour is central to the brief, say so and this gets scheduled first.
 
 ---
 
