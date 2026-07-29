@@ -106,37 +106,73 @@ export interface KidStep {
 }
 
 /**
- * The words that mean "an adult does this bit".
+ * What means "an adult does this bit".
  *
- * Deliberately blunt and deliberately over-inclusive: a false positive costs a
- * child one moment of asking, and a false negative costs considerably more. The
- * list is English because the repository is (Constitution §VII); a translated
- * recipe carries translated steps, and this matcher grows with the languages the
- * app ships.
+ * Two lists, and the split is not tidiness. `ADULT_STEMS` are matched as word
+ * *prefixes*, so one entry covers chop / chopped / chopping and heat / heated /
+ * heating without listing each. `ADULT_WORDS` are matched whole, because their
+ * letters open other words that are perfectly safe — `pan` is in a pancake and a
+ * pantry, and a stem would fire on both.
+ *
+ * Neither is matched as a raw substring, which is what this did first and what
+ * made it wrong in both directions at once: `hot` inside "a shot of espresso"
+ * and inside "photograph" marked innocent steps as dangerous, while the verbs a
+ * recipe for a child actually uses — cut, peel, grate, microwave, drain — were
+ * not on the list at all and passed as safe. The over-inclusion this feature
+ * wants is more words, not looser matching.
+ *
+ * English because the repository is (Constitution §VII); a translated recipe
+ * carries translated steps, and this list grows with the languages the app
+ * ships.
  */
-const ADULT_WORDS: readonly string[] = [
-  "oven",
+const ADULT_STEMS: readonly string[] = [
   "bake",
-  "roast",
-  "grill",
-  "hob",
-  "stove",
-  "fry",
+  "blend",
   "boil",
-  "simmer",
-  "knife",
+  "burner",
   "chop",
-  "slice",
+  "cut",
   "dice",
-  "blender",
-  "processor",
+  "drain",
+  "fry",
+  "grate",
+  "grill",
+  "heat",
+  "hob",
   "hot",
+  "kettle",
+  "knife",
+  "knive",
+  "microwav",
+  "oven",
+  "peel",
+  "roast",
+  "scald",
+  "scissor",
+  "sharp",
+  "simmer",
+  "skillet",
+  "slice",
   "steam",
+  "stove",
+  "toaster",
 ];
 
+/** Matched whole, because their letters begin harmless words. */
+const ADULT_WORDS: readonly string[] = ["pan", "pans", "saucepan", "saucepans", "flame", "flames", "processor", "mixer"];
+
+/**
+ * Errs towards asking a grown-up. A false positive costs a child one moment of
+ * asking; a false negative costs considerably more, so where the two trade off
+ * this leans one way on purpose.
+ */
 export function needsAdult(text: string): boolean {
-  const words = text.toLowerCase();
-  return ADULT_WORDS.some((word) => words.includes(word));
+  const words = text.toLowerCase().split(/[^a-z]+/).filter((word) => word.length > 0);
+
+  return words.some(
+    (word) =>
+      ADULT_WORDS.includes(word) || ADULT_STEMS.some((stem) => word.startsWith(stem)),
+  );
 }
 
 /**

@@ -110,6 +110,17 @@ describe("categorisation (FR-515)", () => {
     expect(seasonOf("nonsense")).toBeUndefined();
   });
 
+  /**
+   * `"2026-1"` slices to `"1"`, parses as January, and used to answer "winter"
+   * — a guess dressed as an answer, for a string that is not a date.
+   */
+  it("does not read a season out of a truncated date", () => {
+    expect(seasonOf("2026-1")).toBeUndefined();
+    expect(seasonOf("2026-3")).toBeUndefined();
+    expect(seasonOf("")).toBeUndefined();
+    expect(seasonOf("2026-07")).toBe("summer");
+  });
+
   it("narrows on every facet given, and on none that is omitted", () => {
     const state = library();
 

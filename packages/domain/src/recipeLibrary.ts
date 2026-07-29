@@ -49,6 +49,11 @@ export function readFacets(state: FamilyState, recipeId: string): RecipeFacets {
  * Meteorological seasons: a family cooks by the month, not by the solstice.
  */
 export function seasonOf(date: string): Season | undefined {
+  // The shape is checked, not just the number. `"2026-1"` slices to `"1"`,
+  // which parses as January and answered "winter" for a string that is not a
+  // date at all — a guess dressed as an answer.
+  if (!/^\d{4}-\d{2}(-|$)/.test(date)) return undefined;
+
   const month = Number(date.slice(5, 7));
   if (!Number.isFinite(month) || month < 1 || month > 12) return undefined;
   if (month <= 2 || month === 12) return "winter";

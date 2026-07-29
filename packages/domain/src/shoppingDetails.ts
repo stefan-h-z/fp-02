@@ -304,12 +304,23 @@ export function runningTotal(lines: readonly PricedLine[]): RunningTotal {
       continue;
     }
 
-    const amount = line.priceCents * Math.max(1, Math.round(line.quantity));
+    // Not rounded to a whole number of items. Half the food shop is sold by
+    // weight, so 2.6 kg at 1.00 is 2.60 and not 3.00 — rounding the quantity
+    // rather than the money made the till total wrong for everything on a
+    // scale. A missing or nonsensical quantity still counts as one, because a
+    // line on the list means somebody wants the thing.
+    const quantity = Number.isFinite(line.quantity) && line.quantity > 0 ? line.quantity : 1;
+    const amount = line.priceCents * quantity;
+
     if (line.checked) spentCents += amount;
     else remainingCents += amount;
   }
 
-  return { spentCents, remainingCents, totalCents: spentCents + remainingCents, unpricedCount };
+  // Rounded once, at the end: rounding each line would drift by a cent per item.
+  const spent = Math.round(spentCents);
+  const remaining = Math.round(remainingCents);
+
+  return { spentCents: spent, remainingCents: remaining, totalCents: spent + remaining, unpricedCount };
 }
 
 /** "12,40 €" — the only place in this module that knows about a currency. */

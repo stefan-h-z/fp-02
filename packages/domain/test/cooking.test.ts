@@ -165,10 +165,46 @@ describe("kids' cook mode (FR-535)", () => {
     expect(kidSteps(kitchen(), "r-sandwich")[1]?.imageUrl).toBeUndefined();
   });
 
-  it("errs towards asking a grown-up", () => {
-    expect(needsAdult("Slice the tomato")).toBe(true);
-    expect(needsAdult("Put it in the oven")).toBe(true);
-    expect(needsAdult("Stir it with a spoon")).toBe(false);
+  /**
+   * Both directions, because the first version of this matcher was wrong in
+   * both at once: it searched for raw substrings, so `hot` inside "a shot of
+   * espresso" and inside "photograph" marked innocent steps dangerous — while
+   * cut, peel, grate, microwave and drain were not on the list at all and
+   * passed as safe. The words below are the ones a recipe written for a child
+   * actually contains.
+   */
+  it("catches the steps a child should not do alone", () => {
+    for (const step of [
+      "Cut the apple in half",
+      "Peel the carrots",
+      "Grate the cheese",
+      "Microwave for two minutes",
+      "Boil the kettle",
+      "Heat the pan",
+      "Put the saucepan on",
+      "Use the scissors to open it",
+      "Turn on the burner",
+      "Drain the pasta",
+      "Slice with a sharp knife",
+      "Put it in the oven",
+    ]) {
+      expect(needsAdult(step), step).toBe(true);
+    }
+  });
+
+  it("leaves alone the steps that only look dangerous", () => {
+    for (const step of [
+      // `hot` lives inside both of these, and used to fire.
+      "Add a shot of espresso",
+      "Photograph the result",
+      // `pan` lives inside both of these, which is why it is matched whole.
+      "Make pancakes from the batter",
+      "Fetch it from the pantry",
+      "Stir it with a spoon",
+      "Sprinkle the chocolate",
+    ]) {
+      expect(needsAdult(step), step).toBe(false);
+    }
   });
 
   it("summarises how much of a recipe is a child's", () => {

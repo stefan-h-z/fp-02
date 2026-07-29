@@ -240,6 +240,23 @@ describe("running total (FR-723)", () => {
    * The total is returned beside the count of what nobody priced, so the screen
    * can say "roughly" honestly rather than showing a number that looks exact.
    */
+  /**
+   * Half a food shop is sold by weight. Rounding the quantity to a whole number
+   * of items — which this did — made the till total wrong for everything on a
+   * scale: 2.6 kg at 1.00 came out as 3.00.
+   */
+  it("prices a weighed quantity as weighed, not as a count", () => {
+    const apples = [{ itemId: "a", name: "Apples", priceCents: 100, quantity: 2.6, checked: false }];
+
+    expect(runningTotal(apples).totalCents).toBe(260);
+  });
+
+  it("counts a line with no quantity as one, because somebody wants the thing", () => {
+    const line = [{ itemId: "a", name: "Milk", priceCents: 149, quantity: 0, checked: false }];
+
+    expect(runningTotal(line).totalCents).toBe(149);
+  });
+
   it("says how much of the list it could not price", () => {
     expect(runningTotal(lines).unpricedCount).toBe(1);
   });
