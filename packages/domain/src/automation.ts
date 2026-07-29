@@ -13,6 +13,7 @@
  */
 import type { RecurrenceKind } from "./calendar.js";
 import { learningAllowed } from "./compliance.js";
+import type { Value } from "./ops.js";
 import { EntityTypes, readString, readStringList } from "./schema.js";
 import type { FamilyState } from "./state.js";
 
@@ -151,7 +152,7 @@ export function suggestRecurrences(
 
 export type BulkChange =
   | { readonly kind: "assign"; readonly personId: string }
-  | { readonly kind: "move"; readonly startsAt: string }
+  | { readonly kind: "move"; readonly startsAt: number }
   | { readonly kind: "retag"; readonly tags: readonly string[] }
   | { readonly kind: "complete" }
   | { readonly kind: "delete" };
@@ -217,19 +218,37 @@ export function planBulkChange(
   return { entityType: input.entityType, change: input.change, targets, skipped };
 }
 
-/** The field changes a plan implies, per target — one payload, applied to many. */
-export function bulkPayload(change: BulkChange, at: string): Record<string, unknown> {
+/**
+ * What a plan writes, per target — one description, applied to many.
+ *
+ * A discriminated write rather than a bag of fields, because deleting is not a
+ * field change: the reducer deletes on its own operation kind and every reader
+ * in the library asks `entity.deleted`. This returned `{ deletedAt }` at first,
+ * which the reducer stores as an ordinary field and nothing anywhere reads — a
+ * bulk delete of twenty tasks reported twenty and removed none.
+ *
+ * The field names and types are the ones the readers actually consume, which is
+ * the other half of the same lesson. `ownerId`, not `assigneeId`, because that
+ * is what `readTask` looks for; epoch milliseconds, not ISO strings, because
+ * `readNumber` is what reads them and an ISO string parses to NaN and vanishes.
+ * Every one of those was inert, and each failed by doing nothing at all.
+ */
+export type BulkWrite =
+  | { readonly kind: "setFields"; readonly payload: Readonly<Record<string, Value>> }
+  | { readonly kind: "delete" };
+
+export function bulkWrite(change: BulkChange, at: number): BulkWrite {
   switch (change.kind) {
     case "assign":
-      return { assigneeId: change.personId };
+      return { kind: "setFields", payload: { ownerId: change.personId } };
     case "move":
-      return { startsAt: change.startsAt };
+      return { kind: "setFields", payload: { startsAt: change.startsAt } };
     case "retag":
-      return { tags: [...change.tags] };
+      return { kind: "setFields", payload: { tags: [...change.tags] } };
     case "complete":
-      return { completedAt: at };
+      return { kind: "setFields", payload: { completedAt: at } };
     case "delete":
-      return { deletedAt: at };
+      return { kind: "delete" };
   }
 }
 

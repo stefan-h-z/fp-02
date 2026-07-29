@@ -9,7 +9,10 @@ import { describe, expect, it } from "vitest";
 import {
   activeObjections,
   applyOperation,
-  bulkPayload,
+  bulkWrite,
+  readEvent,
+  readTask,
+  type BulkWrite,
   describeBulkPlan,
   emptyEntity,
   EntityTypes,
@@ -179,6 +182,49 @@ describe("recurrence suggestions (FR-1108)", () => {
 });
 
 describe("bulk editing (FR-1111)", () => {
+  /**
+   * Turns a `BulkWrite` into the operation the sync engine would send, base
+   * versions included — `MutationBuilder.baseVersions` fills those in for real
+   * callers, and without them a Tier-2 field like `startsAt` is refused as a
+   * conflict rather than written.
+   */
+  function applied(state: FamilyState, entityId: string, write: BulkWrite): FamilyState {
+    const entityType = state.get(EntityTypes.task, entityId) === undefined
+      ? EntityTypes.event
+      : EntityTypes.task;
+
+    state.apply(
+      makeOperation({
+        opId: newId(),
+        familyId: FAMILY,
+        deviceId: "device-a",
+        actorId: "person-mum",
+        entityType,
+        entityId,
+        kind: write.kind === "delete" ? "entity.delete" : "entity.setFields",
+        payload: write.kind === "delete" ? {} : write.payload,
+        ...(write.kind === "delete"
+          ? {}
+          : {
+              base: Object.fromEntries(
+                Object.keys(write.payload).map((field) => [
+                  field,
+                  state.get(entityType, entityId)?.meta[field]?.version ?? 0,
+                ]),
+              ),
+            }),
+        hlc: clock.next(),
+      }),
+    );
+    return state;
+  }
+
+  function events(): FamilyState {
+    const state = new FamilyState();
+    put(state, EntityTypes.event, "e-1", { title: "Dentist", startsAt: 1, endsAt: 2 });
+    return state;
+  }
+
   function tasks(): FamilyState {
     const state = new FamilyState();
     put(state, EntityTypes.task, "t-1", { title: "Bins" });
@@ -229,14 +275,40 @@ describe("bulk editing (FR-1111)", () => {
     expect(plan.skipped).toEqual([{ id: "i-1", reason: "comes from the plan" }]);
   });
 
-  it("turns each change into the fields it writes", () => {
-    const at = "2026-03-01T10:00:00Z";
+  /**
+   * Applied through real operations and read back with the real readers, not
+   * compared against the object the function happens to return.
+   *
+   * Asserting the shape is what let four of these five writes be inert: the
+   * assignment wrote `assigneeId` where `readTask` looks for `ownerId`, the
+   * completion and the move wrote ISO strings where `readNumber` reads them and
+   * an ISO string parses to NaN, and the delete wrote a `deletedAt` field that
+   * nothing in the library has ever read. Every one of them reported success
+   * and changed nothing, and a test comparing the payload to itself agreed.
+   */
+  it("writes what the readers actually read", () => {
+    const at = Date.parse("2026-03-01T10:00:00Z");
 
-    expect(bulkPayload({ kind: "assign", personId: "p" }, at)).toEqual({ assigneeId: "p" });
-    expect(bulkPayload({ kind: "move", startsAt: at }, at)).toEqual({ startsAt: at });
-    expect(bulkPayload({ kind: "retag", tags: ["x"] }, at)).toEqual({ tags: ["x"] });
-    expect(bulkPayload({ kind: "complete" }, at)).toEqual({ completedAt: at });
-    expect(bulkPayload({ kind: "delete" }, at)).toEqual({ deletedAt: at });
+    const assigned = applied(tasks(), "t-1", bulkWrite({ kind: "assign", personId: "person-dad" }, at));
+    expect(readTask(assigned, "t-1")?.ownerId).toBe("person-dad");
+
+    const completed = applied(tasks(), "t-1", bulkWrite({ kind: "complete" }, at));
+    expect(readTask(completed, "t-1")?.completedAt).toBe(at);
+
+    const moved = applied(events(), "e-1", bulkWrite({ kind: "move", startsAt: at }, at));
+    expect(readEvent(moved, "e-1")?.startsAt).toBe(at);
+
+    const retagged = applied(tasks(), "t-1", bulkWrite({ kind: "retag", tags: ["x"] }, at));
+    expect(retagged.get(EntityTypes.task, "t-1")?.fields["tags"]).toEqual(["x"]);
+  });
+
+  /** Deleting is its own operation, not a field somebody hopes is honoured. */
+  it("really deletes, rather than writing a field nobody reads", () => {
+    const write = bulkWrite({ kind: "delete" }, 0);
+    expect(write.kind).toBe("delete");
+
+    const after = applied(tasks(), "t-1", write);
+    expect(after.get(EntityTypes.task, "t-1")?.deleted).toBe(true);
   });
 
   /** The count shown and the count changed come from the same object. */
