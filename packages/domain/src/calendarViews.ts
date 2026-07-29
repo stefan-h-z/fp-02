@@ -218,9 +218,7 @@ export function selectTimeline(
     entries: occurrences
       .filter((occurrence) => occurrence.participantIds.includes(personId))
       .map((occurrence) => ({
-        occurrence: occurrence.private
-          ? { ...occurrence, title: "" }
-          : occurrence,
+        occurrence: withoutPrivateTitle(occurrence),
         offsetMinutes: Math.max(0, Math.round((occurrence.startsAt - window.from) / 60_000)),
         durationMinutes: Math.max(
           1,
@@ -235,13 +233,27 @@ export function selectTimeline(
 // ── Shared ────────────────────────────────────────────────────────────────
 
 /**
+ * A private event, reduced to the fact that the time is taken (FR-203).
+ *
+ * Done here rather than in each screen, and that is the whole point of it being
+ * a function. The masking used to live in the views: the day and agenda lists
+ * checked `private` before printing a title, and the month cell did not — so a
+ * therapy appointment was legible in the grid. Anything reading these
+ * projections gets the same answer now, including the ones not written yet.
+ */
+function withoutPrivateTitle(occurrence: Occurrence): Occurrence {
+  return occurrence.private ? { ...occurrence, title: "" } : occurrence;
+}
+
+/**
  * Occurrences filed under every day they touch, so a multi-day event (FR-204)
  * appears on Wednesday as well as on the Monday it started.
  */
 function groupByDay(occurrences: readonly Occurrence[]): Map<number, Occurrence[]> {
   const byDay = new Map<number, Occurrence[]>();
 
-  for (const occurrence of occurrences) {
+  for (const raw of occurrences) {
+    const occurrence = withoutPrivateTitle(raw);
     const last = startOfDayUtc(occurrence.endsAt);
     for (let day = startOfDayUtc(occurrence.startsAt); day <= last; day += DAY_MS) {
       byDay.set(day, [...(byDay.get(day) ?? []), occurrence]);

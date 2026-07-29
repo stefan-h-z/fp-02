@@ -202,6 +202,48 @@ describe("agenda view (FR-206)", () => {
   });
 });
 
+/**
+ * FR-203, asserted on the projections rather than on a screen.
+ *
+ * The masking used to live in the views: the day and agenda lists checked
+ * `private` before printing a title and the month cell did not, so a therapy
+ * appointment was legible in the grid. Anything reading these projections — a
+ * print, an export, a screen not written yet — got the title too.
+ */
+describe("private events (FR-203)", () => {
+  beforeEach(() => {
+    seed("e-therapy", {
+      title: "Therapy",
+      startsAt: ANCHOR + 11 * HOUR,
+      endsAt: ANCHOR + 12 * HOUR,
+      private: true,
+    });
+  });
+
+  it("keeps the title out of the month grid", () => {
+    const cell = selectMonth(state, { anchor: ANCHOR, now: ANCHOR })
+      .weeks.flat()
+      .find((candidate) => candidate.date === ANCHOR);
+
+    expect(cell?.occurrences).toHaveLength(1);
+    expect(cell?.occurrences[0]?.title).toBe("");
+  });
+
+  it("keeps the title out of the agenda", () => {
+    const day = selectAgenda(state, { anchor: ANCHOR }).days[0];
+
+    expect(day?.occurrences[0]?.title).toBe("");
+  });
+
+  /** The time is still taken — busy/free is the point, not invisibility. */
+  it("still shows that the time is taken", () => {
+    const day = selectAgenda(state, { anchor: ANCHOR }).days[0];
+
+    expect(day?.occurrences[0]?.startsAt).toBe(ANCHOR + 11 * HOUR);
+    expect(day?.occurrences[0]?.endsAt).toBe(ANCHOR + 12 * HOUR);
+  });
+});
+
 describe("per-person timeline (FR-206)", () => {
   it("gives each person a lane over the same window", () => {
     seed("e-mum", {

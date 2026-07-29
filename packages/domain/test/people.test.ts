@@ -284,3 +284,55 @@ describe("the access log (SEC-05, FR-1419)", () => {
     expect(needsSecondFactor("export")).toBe(false);
   });
 });
+
+/**
+ * An event stores who is coming in an observed-remove set, which is the shape
+ * the sync engine actually produces. Reading only the scalar fields and the
+ * plain lists meant a separated parent could not see their own child's shared
+ * swimming lesson — nothing the entity said about that child was anywhere this
+ * looked, and FR-104 exists precisely so they can.
+ */
+/** Participants are an observed-remove set, so they arrive as their own op. */
+function addParticipant(state: FamilyState, eventId: string, personId: string): void {
+  state.apply(
+    makeOperation({
+      opId: newId(),
+      familyId: FAMILY,
+      deviceId: "device-a",
+      actorId: "person-mum",
+      entityType: EntityTypes.event,
+      entityId: eventId,
+      kind: "set.add",
+      payload: { field: "participants", member: personId },
+      hlc: clock.next(),
+    }),
+  );
+}
+
+describe("who an entity is about (FR-104)", () => {
+  const scope = { viewerRole: "separated-parent" as const, viewerChildIds: ["child-1"] };
+
+  it("finds a child named in a participants set", () => {
+    const state = new FamilyState();
+    put(state, EntityTypes.event, "e-swim", { title: "Swimming", sharedAcrossHouseholds: true });
+    addParticipant(state, "e-swim", "child-1");
+
+    expect(isVisibleTo(state.get(EntityTypes.event, "e-swim"), scope)).toBe(true);
+  });
+
+  it("still hides a shared event about somebody else's child", () => {
+    const state = new FamilyState();
+    put(state, EntityTypes.event, "e-other", { title: "Football", sharedAcrossHouseholds: true });
+    addParticipant(state, "e-other", "child-9");
+
+    expect(isVisibleTo(state.get(EntityTypes.event, "e-other"), scope)).toBe(false);
+  });
+
+  it("still hides an event about their child that was never shared", () => {
+    const state = new FamilyState();
+    put(state, EntityTypes.event, "e-private", { title: "Doctor" });
+    addParticipant(state, "e-private", "child-1");
+
+    expect(isVisibleTo(state.get(EntityTypes.event, "e-private"), scope)).toBe(false);
+  });
+});

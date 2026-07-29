@@ -19,7 +19,7 @@
  */
 import type { FamilyState } from "./state.js";
 import { EntityTypes, readRecords, readString, readStringList } from "./schema.js";
-import type { StoredEntity } from "./entity.js";
+import { setMembers, type StoredEntity } from "./entity.js";
 
 // ── Profile (FR-101) ──────────────────────────────────────────────────────
 
@@ -142,12 +142,25 @@ export function isVisibleTo(entity: StoredEntity | undefined, scope: ScopeInput)
 }
 
 /** Whom an object is about, across the several field names entities use. */
-function subjectsOf(entity: StoredEntity): readonly string[] {
-  const single = ["personId", "childId", "ownerId"]
-    .map((field) => readString(entity, field))
-    .filter((value) => value.length > 0);
+/**
+ * Every way an entity can name the people it is about.
+ *
+ * The set fields are not optional extras. An event stores who is coming in an
+ * observed-remove set called `participants`, which is the shape the sync engine
+ * actually produces — reading only the scalar fields and the plain lists meant a
+ * separated parent could not see their own child's shared swimming lesson,
+ * because nothing the entity said about that child was in a place this looked.
+ */
+const SUBJECT_FIELDS: readonly string[] = ["personId", "childId", "ownerId", "assigneeId"];
+const SUBJECT_LISTS: readonly string[] = ["personIds", "childIds"];
+const SUBJECT_SETS: readonly string[] = ["participants", "eaters", "responsibleAdults"];
 
-  return [...single, ...readStringList(entity, "personIds"), ...readStringList(entity, "childIds")];
+function subjectsOf(entity: StoredEntity): readonly string[] {
+  return [
+    ...SUBJECT_FIELDS.map((field) => readString(entity, field)).filter((value) => value.length > 0),
+    ...SUBJECT_LISTS.flatMap((field) => readStringList(entity, field)),
+    ...SUBJECT_SETS.flatMap((field) => setMembers(entity, field)),
+  ];
 }
 
 /** Applies the scope to a list, so callers cannot forget one entity. */
