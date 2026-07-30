@@ -14,3 +14,6 @@ web-build/
 
 # Screenshots from a browser run: evidence for the person watching, not source.
 apps/*/e2e/.artifacts/
+
+# Screenshot captures — delivered to the user, not source of truth (see docs/design-handoff.md §4).
+apps/app/e2e/screenshots/

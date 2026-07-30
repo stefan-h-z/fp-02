@@ -11,8 +11,8 @@
  */
 import { useCallback, useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { Slot } from "expo-router";
-import { useColorScheme } from "react-native";
-import { TamaguiProvider, Theme } from "@tamagui/core";
+import { Platform, useColorScheme } from "react-native";
+import { Stack, TamaguiProvider, Theme } from "@tamagui/core";
 import { tamaguiConfig } from "@cp/tokens";
 import { Alert, Button, Spinner } from "@cp/ui";
 import { EntityTypes } from "@fam/domain";
@@ -163,6 +163,23 @@ export default function RootLayout(): ReactNode {
     // away once @cp/tokens is installed from the registry (docs/status.md).
     <TamaguiProvider config={tamaguiConfig as unknown as TamaguiProviderConfig} defaultTheme={scheme}>
       <Theme name={scheme}>
+        {/*
+         * The surface the whole app sits on, painted with the active theme's
+         * `$background`. Without it the `<Theme>` swap reaches the components but
+         * not the page behind them: on web the body stays its default white in
+         * dark mode, so a screen whose content sits straight on the page (Today,
+         * My day) shows near-white primary text on white — invisible. The design
+         * system's own Storybook fixes this the same way, and its preview.tsx
+         * carries the comment that named the failure.
+         *
+         * `100vh` on web so the surface fills the viewport under short screens;
+         * `flex: 1` everywhere so it fills its parent on native.
+         */}
+        <Stack
+          flex={1}
+          backgroundColor="$background"
+          {...(Platform.OS === "web" ? { minHeight: "100vh" } : {})}
+        >
         {ready === undefined ? (
           <Spinner />
         ) : ready.client === undefined ? (
@@ -197,6 +214,7 @@ export default function RootLayout(): ReactNode {
             <Slot />
           </AppProvider>
         )}
+        </Stack>
       </Theme>
     </TamaguiProvider>
   );

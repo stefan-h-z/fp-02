@@ -200,8 +200,30 @@ await step("dark mode follows the device", async () => {
           if (/^t_(light|dark)$/.test(name)) chain.unshift(name);
         }
       }
-      return { chain, colour: node ? getComputedStyle(node).color : "" };
+      // The page's own background: the largest element carrying an opaque
+      // fill. This is what a screen's content sits on, and the half a
+      // class-only assertion misses — the theme class can be right while the
+      // surface behind it stays the other theme's colour.
+      let surface = "";
+      let bestArea = 0;
+      for (const el of Array.from(document.querySelectorAll("*"))) {
+        const bg = getComputedStyle(el).backgroundColor;
+        if (bg === "rgba(0, 0, 0, 0)" || bg === "transparent") continue;
+        const r = el.getBoundingClientRect();
+        const area = r.width * r.height;
+        if (area > bestArea) {
+          bestArea = area;
+          surface = bg;
+        }
+      }
+      return { chain, colour: node ? getComputedStyle(node).color : "", surface };
     });
+
+  // Perceived lightness of an "rgb(r, g, b)" string, 0 (black) … 255 (white).
+  const luminance = (rgb) => {
+    const [r, g, b] = (rgb.match(/\d+/g) ?? [0, 0, 0]).map(Number);
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+  };
 
   const settle = async () => {
     await page.reload({ waitUntil: "domcontentloaded" });
@@ -242,6 +264,27 @@ await step("dark mode follows the device", async () => {
   assert(
     light.colour !== dark.colour,
     `text painted the same in both themes: ${light.colour}`,
+  );
+
+  /*
+   * The surface, not just the text — the half THIS assertion was added for.
+   *
+   * A screenshot review found near-white primary text on a white page in dark
+   * mode: the `<Theme>` swap reached the components but nothing painted the page
+   * behind them, so screens whose content sits straight on the page background
+   * (Today, My day) rendered light text on a light surface — invisible. Where a
+   * Card wrapped the content the Card themed dark and it was legible, which is
+   * why the class-and-text checks above passed while the app was broken.
+   *
+   * Assert the surface actually darkens: a dark device must paint a dark page.
+   */
+  assert(
+    luminance(light.surface) > 200,
+    `a light device did not paint a light surface: ${light.surface}`,
+  );
+  assert(
+    luminance(dark.surface) < 60,
+    `a dark device did not paint a dark surface: ${dark.surface}`,
   );
 
   await page.emulateMedia({ colorScheme: "light" });
